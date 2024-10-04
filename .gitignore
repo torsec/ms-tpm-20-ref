@@ -12,6 +12,11 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+# CMake Files
+CmakeFiles/
+CmakeCache.txt
+cmake_install.cmake
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -23,9 +28,14 @@ bld/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
+build/
 
 # Visual Studio 2015 cache/options directory
 .vs/
+
+# Visual Studio Code directory
+.vscode/
+
 # Uncomment if you have tasks that create the project's static files in wwwroot
 #wwwroot/
 
@@ -290,14 +300,23 @@ __pycache__/
 # TPM simulator run-time/state files
 NVChip
 RsaKeyCacheCrt.data
+*.port
 
 # Ossl support
 TPMCmd/Lib/*
 TPMCmd/OsslInclude/*
 
-# Wolf Build results 
+# Wolf Build results
 TPMCmd/WolfDebug/*
 TPMCmd/WolfRelease/*
+
+# CMake Build results
+TPMCmd/Debug/*
+TPMCmd/Debug64/*
+TPMCmd/DebugOssl/*
+TPMCmd/DebugOssl64/*
+TPMCmd/DebugWolf/*
+TPMCmd/DebugWolf64/*
 
 # Linux build files
 .deps/
@@ -334,16 +353,18 @@ TPMCmd/tpm/src/libtpm.a
 /TPMCmd/Simulator/DebugFile.txt
 /TPMCmd/ParserTemps
 /TPMCmd/TpmScripts
+
+#ignore files used by document converters
+
 /Rev 2.0 Part 3 - Commands 01.54x.docx
 /TCG Algorithm Registry 2017-01-03.docx
 /TPM 2.0 Vendor-Specific 2019-08-19.docx
 /TPM Rev 2.0 Part 2 - Structures 01.54.docx
 /TPM Rev 2.0 Part 3 - Commands 01.54.docx
 /Part3
-/TPMCmd - Copy/lib
-/TPMCmd - Copy/OsslInclude/openssl
-/TPMCmd - Copy/ParserTemps
-/TPMCmd - Copy/Tpm/include/Wolf
-/TPMCmd - Copy
 /TPM Rev 2.0 Part 2 - Structures 01.59.docx
 /TPM Rev 2.0 Part 3 - Commands 01.59.docx
+# ignore diagrams.net local backup files
+*.bkp
+# ignore Visual Studio's default output directory for CMake projects
+TPMCmd/out/

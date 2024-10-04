@@ -1,39 +1,7 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes and Defines
 #include "Tpm.h"
+#include "TpmMath_Util_fp.h"
+#include "TpmEcc_Util_fp.h"
 
 #if CC_ECC_Encrypt || CC_ECC_Encrypt
 
@@ -82,11 +50,11 @@ LIB_EXPORT TPM_RC CryptEccEncrypt(
                                   //      and plainText
 )
 {
-    CURVE_INITIALIZED(E, key->publicArea.parameters.eccDetail.curveID);
-    POINT_INITIALIZED(PB, &key->publicArea.unique.ecc);
-    POINT_VAR(Px, MAX_ECC_KEY_BITS);
+    CRYPT_CURVE_INITIALIZED(E, key->publicArea.parameters.eccDetail.curveID);
+    CRYPT_POINT_INITIALIZED(PB, &key->publicArea.unique.ecc);
+    CRYPT_POINT_VAR(Px);
     TPMS_ECC_POINT p2;
-    ECC_NUM(D);
+    CRYPT_ECC_NUM(D);
     TPM2B_TYPE(2ECC, MAX_ECC_KEY_BYTES * 2);
     TPM2B_2ECC z;
     int        i;
@@ -107,21 +75,21 @@ LIB_EXPORT TPM_RC CryptEccEncrypt(
 #    define RANDOM NULL
 #  endif
     if(E == NULL)
-        ERROR_RETURN(TPM_RC_CURVE);
+        ERROR_EXIT(TPM_RC_CURVE);
     if(TPM_ALG_KDF2 != scheme->scheme)
-        ERROR_RETURN(TPM_RC_SCHEME);
+        ERROR_EXIT(TPM_RC_SCHEME);
     // generate an ephemeral key from a random k
-    if(!BnEccGenerateKeyPair(D, Px, E, RANDOM)
+    if(!TpmEcc_GenerateKeyPair(D, Px, E, RANDOM)
        // C1 is the public part of the ephemeral key
-       || !BnPointTo2B(c1, Px, E)
+       || !TpmEcc_PointTo2B(c1, Px, E)
        // Compute P2
-       || (BnPointMult(Px, PB, D, NULL, NULL, E) != TPM_RC_SUCCESS)
-       || !BnPointTo2B(&p2, Px, E))
-        ERROR_RETURN(TPM_RC_NO_RESULT);
+       || (TpmEcc_PointMult(Px, PB, D, NULL, NULL, E) != TPM_RC_SUCCESS)
+       || !TpmEcc_PointTo2B(&p2, Px, E))
+        ERROR_EXIT(TPM_RC_NO_RESULT);
 
     //Compute the C3 value hash(x2 || M || y2)
     if(0 == CryptHashStart(&hashState, scheme->details.mgf1.hashAlg))
-        ERROR_RETURN(TPM_RC_HASH);
+        ERROR_EXIT(TPM_RC_HASH);
     CryptDigestUpdate2B(&hashState, &p2.x.b);
     CryptDigestUpdate2B(&hashState, &plainText->b);
     CryptDigestUpdate2B(&hashState, &p2.y.b);
@@ -140,7 +108,7 @@ LIB_EXPORT TPM_RC CryptEccEncrypt(
     for(i = 0; i < plainText->t.size; i++)
         c2->t.buffer[i] ^= plainText->t.buffer[i];
 Exit:
-    CURVE_FREE(E);
+    CRYPT_CURVE_FREE(E);
     return retVal;
 }
 
@@ -162,9 +130,9 @@ LIB_EXPORT TPM_RC CryptEccDecrypt(
                                   //      and plainText
 )
 {
-    CURVE_INITIALIZED(E, key->publicArea.parameters.eccDetail.curveID);
-    ECC_INITIALIZED(D, &key->sensitive.sensitive.ecc.b);
-    POINT_INITIALIZED(C1, c1);
+    CRYPT_CURVE_INITIALIZED(E, key->publicArea.parameters.eccDetail.curveID);
+    CRYPT_ECC_INITIALIZED(D, &key->sensitive.sensitive.ecc.b);
+    CRYPT_POINT_INITIALIZED(C1, c1);
     TPMS_ECC_POINT p2;
     TPM2B_TYPE(2ECC, MAX_ECC_KEY_BYTES * 2);
     TPM2B_DIGEST check;
@@ -174,16 +142,16 @@ LIB_EXPORT TPM_RC CryptEccDecrypt(
     TPM_RC       retVal = TPM_RC_SUCCESS;
     //
     if(E == NULL)
-        ERROR_RETURN(TPM_RC_CURVE);
+        ERROR_EXIT(TPM_RC_CURVE);
     if(TPM_ALG_KDF2 != scheme->scheme)
-        ERROR_RETURN(TPM_RC_SCHEME);
+        ERROR_EXIT(TPM_RC_SCHEME);
     // Generate the Z value
-    BnPointMult(C1, C1, D, NULL, NULL, E);
-    BnPointTo2B(&p2, C1, E);
+    TpmEcc_PointMult(C1, C1, D, NULL, NULL, E);
+    TpmEcc_PointTo2B(&p2, C1, E);
 
     // Start the hash to check the algorithm
     if(0 == CryptHashStart(&hashState, scheme->details.mgf1.hashAlg))
-        ERROR_RETURN(TPM_RC_HASH);
+        ERROR_EXIT(TPM_RC_HASH);
     CryptDigestUpdate2B(&hashState, &p2.x.b);
 
     MemoryCopy2B(&z.b, &p2.x.b, sizeof(z.t.buffer));
@@ -205,9 +173,9 @@ LIB_EXPORT TPM_RC CryptEccDecrypt(
     CryptDigestUpdate2B(&hashState, &p2.y.b);
     check.t.size = CryptHashEnd(&hashState, sizeof(check.t.buffer), check.t.buffer);
     if(!MemoryEqual2B(&check.b, &c3->b))
-        ERROR_RETURN(TPM_RC_VALUE);
+        ERROR_EXIT(TPM_RC_VALUE);
 Exit:
-    CURVE_FREE(E);
+    CRYPT_CURVE_FREE(E);
     return retVal;
 }
 

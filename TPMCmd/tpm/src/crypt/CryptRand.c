@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 // This file implements a DRBG with a behavior according to SP800-90A using
 // a block cypher. This is also compliant to ISO/IEC 18031:2011(E) C.3.2.
@@ -97,6 +63,8 @@ const BYTE DRBG_NistTestVector_Generated[]       = {DRBG_TEST_GENERATED};
 #if DRBG_KEY_SIZE_BITS != 128 && DRBG_KEY_SIZE_BITS != 256
 #  error "CryptRand.c only written for AES with 128- or 256-bit keys."
 #endif
+
+typedef tpmKeyScheduleAES DRBG_KEY_SCHEDULE;
 
 typedef struct
 {
@@ -353,8 +321,7 @@ static BOOL EncryptDRBG(BYTE*              dOut,
         if((lastValue[0] == temp[0]) && (lastValue[1] == temp[1])
            && (lastValue[2] == temp[2]) && (lastValue[3] == temp[3]))
         {
-            LOG_FAILURE(FATAL_ERROR_ENTROPY);
-            return FALSE;
+            FAIL_BOOL(FATAL_ERROR_ENTROPY);
         }
         lastValue[0] = temp[0];
         lastValue[1] = temp[1];
@@ -420,8 +387,7 @@ static BOOL DRBG_Update(
     {
         if(DRBG_ENCRYPT_SETUP((BYTE*)key, DRBG_KEY_SIZE_BITS, &localKeySchedule) != 0)
         {
-            LOG_FAILURE(FATAL_ERROR_INTERNAL);
-            return FALSE;
+            FAIL_BOOL(FATAL_ERROR_INTERNAL);
         }
         keySchedule = &localKeySchedule;
     }
@@ -667,8 +633,7 @@ LIB_EXPORT TPM_RC DRBG_InstantiateSeeded(
     // DRBG should have been tested, but...
     if(!IsDrbgTested() && !DRBG_SelfTest())
     {
-        LOG_FAILURE(FATAL_ERROR_SELF_TEST);
-        return TPM_RC_FAILURE;
+        FAIL_RC(FATAL_ERROR_SELF_TEST);
     }
     // Initialize the DRBG state
     memset(drbgState, 0, sizeof(DRBG_STATE));
@@ -852,8 +817,7 @@ LIB_EXPORT UINT16 DRBG_Generate(
             {
                 // If this is a PRNG then the only way to get
                 // here is if the SW has run away.
-                LOG_FAILURE(FATAL_ERROR_INTERNAL);
-                return 0;
+                FAIL_IMMEDIATE(FATAL_ERROR_INTERNAL, 0);
             }
         }
         // if the allowed number of bytes in a request is larger than the
@@ -867,8 +831,7 @@ LIB_EXPORT UINT16 DRBG_Generate(
                (BYTE*)pDRBG_KEY(seed), DRBG_KEY_SIZE_BITS, &keySchedule)
            != 0)
         {
-            LOG_FAILURE(FATAL_ERROR_INTERNAL);
-            return 0;
+            FAIL_IMMEDIATE(FATAL_ERROR_INTERNAL, 0);
         }
         // Generate the random data
         EncryptDRBG(
@@ -881,8 +844,8 @@ LIB_EXPORT UINT16 DRBG_Generate(
     }
     else
     {
-        LOG_FAILURE(FATAL_ERROR_INTERNAL);
-        return FALSE;
+        // invalid DRBG state structure
+        FAIL_IMMEDIATE(FATAL_ERROR_INTERNAL, 0);
     }
     return randomSize;
 }

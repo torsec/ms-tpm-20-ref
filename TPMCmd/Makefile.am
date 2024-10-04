@@ -36,8 +36,18 @@ PLATFORM_INC = -I $(srcdir)/Platform/include \
     -I $(srcdir)/Platform/include/prototypes
 SIMULATOR_INC =  -I $(srcdir)/Simulator/include \
     -I $(srcdir)/Simulator/include/prototypes
-TPM_INC = -I $(srcdir)/tpm/include \
-    -I $(srcdir)/tpm/include/prototypes
+TPM_INC = \
+    -I $(srcdir)/tpm/include \
+    -I $(srcdir)/tpm/include/platform_interface \
+    -I $(srcdir)/tpm/include/platform_interface/prototypes \
+    -I $(srcdir)/tpm/include/private \
+    -I $(srcdir)/tpm/include/private/prototypes \
+    -I $(srcdir)/tpm/include/public \
+    -I $(srcdir)/tpm/cryptolibs \
+    -I $(srcdir)/tpm/cryptolibs/common/include \
+    -I $(srcdir)/tpm/cryptolibs/Ossl/include \
+    -I $(srcdir)/tpm/cryptolibs/TpmBigNum/include \
+    -I $(srcdir)/TpmConfiguration
 
 libplatform = Platform/src/libplatform.a
 libtpm = tpm/src/libtpm.a

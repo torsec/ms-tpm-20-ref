@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 
 // The NV memory is divided into two areas: dynamic space for user defined NV
@@ -245,7 +211,7 @@ NvWriteNvListEnd(NV_REF end)
     UINT64 maxCount                                  = NvReadMaxCount();
     //
     // This is a constant check that can be resolved at compile time.
-    cAssert(sizeof(UINT64) <= sizeof(NV_LIST_TERMINATOR) - sizeof(UINT32));
+    MUST_BE(sizeof(UINT64) <= sizeof(NV_LIST_TERMINATOR) - sizeof(UINT32));
 
     // Copy the maxCount value to the marker buffer
     MemoryCopy(&listEndMarker[sizeof(UINT32)], &maxCount, sizeof(UINT64));
@@ -606,7 +572,13 @@ static TPM_RC NvConditionallyWrite(NV_REF entryAddr,  // IN: stating address
 )
 {
     // If the index data is actually changed, then a write to NV is required
-    if(_plat__NvIsDifferent(entryAddr, size, data))
+    int isDifferent = _plat__NvGetChangedStatus(entryAddr, size, data);
+    if(isDifferent == NV_INVALID_LOCATION)
+    {
+        // invalid request, we should be in failure mode by now.
+        return TPM_RC_FAILURE;
+    }
+    else if(isDifferent == NV_HAS_CHANGED)
     {
         // Write the data if NV is available
         if(g_NvStatus == TPM_RC_SUCCESS)
@@ -615,7 +587,12 @@ static TPM_RC NvConditionallyWrite(NV_REF entryAddr,  // IN: stating address
         }
         return g_NvStatus;
     }
-    return TPM_RC_SUCCESS;
+    else if(isDifferent == NV_IS_SAME)
+    {
+        return TPM_RC_SUCCESS;
+    }
+    // the platform gave us an invalid response.
+    FAIL_RC(FATAL_ERROR_PLATFORM);
 }
 
 //*** NvReadNvIndexAttributes()
@@ -1096,40 +1073,6 @@ NvWriteUINT64Data(NV_INDEX* nvIndex,  // IN: the description of the index
     return NvWriteIndexData(nvIndex, 0, 8, &bytes);
 }
 
-//*** NvGetIndexName()
-// This function computes the Name of an index
-// The 'name' buffer receives the bytes of the Name and the return value
-// is the number of octets in the Name.
-//
-// This function requires that the NV Index is defined.
-TPM2B_NAME* NvGetIndexName(
-    NV_INDEX* nvIndex,  // IN: the index over which the name is to be
-                        //     computed
-    TPM2B_NAME* name    // OUT: name of the index
-)
-{
-    UINT16     dataSize, digestSize;
-    BYTE       marshalBuffer[sizeof(TPMS_NV_PUBLIC)];
-    BYTE*      buffer;
-    HASH_STATE hashState;
-    //
-    // Marshal public area
-    buffer   = marshalBuffer;
-    dataSize = TPMS_NV_PUBLIC_Marshal(&nvIndex->publicArea, &buffer, NULL);
-
-    // hash public area
-    digestSize = CryptHashStart(&hashState, nvIndex->publicArea.nameAlg);
-    CryptDigestUpdate(&hashState, dataSize, marshalBuffer);
-
-    // Complete digest leaving room for the nameAlg
-    CryptHashEnd(&hashState, digestSize, &name->b.buffer[2]);
-
-    // Include the nameAlg
-    UINT16_TO_BYTE_ARRAY(nvIndex->publicArea.nameAlg, name->b.buffer);
-    name->t.size = digestSize + 2;
-    return name;
-}
-
 //*** NvGetNameByIndexHandle()
 // This function is used to compute the Name of an NV Index referenced by handle.
 //
@@ -1484,6 +1427,28 @@ NvCapGetPersistent(TPMI_DH_OBJECT handle,  // IN: start handle
     return more;
 }
 
+//*** NvCapGetOnePersistent()
+// This function returns whether a given persistent handle exists.
+//
+// 'Handle' must be in valid persistent object handle range.
+BOOL NvCapGetOnePersistent(TPMI_DH_OBJECT handle)  // IN: handle
+{
+    NV_REF     iter = NV_REF_INIT;
+    NV_REF     currentAddr;
+    TPM_HANDLE entityHandle;
+
+    pAssert(HandleGetType(handle) == TPM_HT_PERSISTENT);
+
+    while((currentAddr = NvNextEvict(&entityHandle, &iter)) != 0)
+    {
+        if(entityHandle == handle)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 //*** NvCapGetIndex()
 // This function returns a list of handles of NV indexes, starting from 'handle'.
 // 'Handle' must be in the range of NV indexes, but does not have to reference
@@ -1529,6 +1494,26 @@ NvCapGetIndex(TPMI_DH_OBJECT handle,     // IN: start handle
         InsertSort(handleList, count, nvHandle);
     }
     return more;
+}
+
+//*** NvCapGetOneIndex()
+// This function whether an NV index exists.
+BOOL NvCapGetOneIndex(TPMI_DH_OBJECT handle)  // IN: handle
+{
+    NV_REF     iter = NV_REF_INIT;
+    NV_REF     currentAddr;
+    TPM_HANDLE nvHandle;
+
+    pAssert(HandleGetType(handle) == TPM_HT_NV_INDEX);
+
+    while((currentAddr = NvNextIndex(&nvHandle, &iter)) != 0)
+    {
+        if(nvHandle == handle)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 //*** NvCapGetIndexNumber()

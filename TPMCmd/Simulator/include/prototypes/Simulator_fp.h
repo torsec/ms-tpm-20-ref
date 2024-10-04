@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 /*(Auto-generated)
  *  Created by TpmPrototypes; Version 3.0 July 18, 2017
  *  Date: Mar  4, 2020  Time: 02:36:45PM
@@ -59,18 +25,24 @@ DWORD WINAPI PlatformSvcRoutine(LPVOID port);
 // This function starts a new thread waiting for platform signals.
 // Platform signals are processed one at a time in the order in which they are
 // received.
-int PlatformSignalService(int PortNumber);
+// If PickPorts is true, the server finds the next available port if the specified
+// port was unavailable.
+int PlatformSignalService(int PortNumber, bool PickPorts);
 
 //*** RegularCommandService()
 // This function services regular commands.
-int RegularCommandService(int PortNumber);
+// If PickPorts is true, the server finds the next available port if the specified
+// port was unavailable.
+int RegularCommandService(int PortNumber, bool PickPorts);
 
 //*** StartTcpServer()
-// This is the main entry-point to the TCP server.  The server listens on port
+// This is the main entry-point to the TCP server.  The server listens on the port
 // specified.
+// If PickPorts is true, the server finds the next available port if the specified
+// port was unavailable.
 //
 // Note that there is no way to specify the network interface in this implementation.
-int StartTcpServer(int PortNumber);
+int StartTcpServer(int PortNumber, bool PickPorts);
 
 //*** ReadBytes()
 // This function reads the indicated number of bytes ('NumBytes') into buffer
@@ -93,7 +65,7 @@ bool ReadUINT32(SOCKET s, uint32_t* val);
 //*** ReadVarBytes()
 // Get a uint32-length-prepended binary array.  Note that the 4-byte length is
 // in network byte order (big-endian).
-bool ReadVarBytes(SOCKET s, char* buffer, uint32_t* BytesReceived, uint32_t MaxLen);
+bool ReadVarBytes(SOCKET s, char* buffer, uint32_t* BytesReceived, int MaxLen);
 
 //*** WriteVarBytes()
 // Send a UINT32-length-prepended binary array.  Note that the 4-byte length is
@@ -190,6 +162,14 @@ void _rpc__RsaKeyCacheControl(int state);
 //*** _rpc__ACT_GetSignaled()
 // This function is used to count the ACT second tick.
 bool _rpc__ACT_GetSignaled(uint32_t actHandle);
+
+//*** _rpc__SetTpmFirmwareHash()
+// This function is used to modify the firmware's hash during simulation.
+void _rpc__SetTpmFirmwareHash(uint32_t hash);
+
+//*** _rpc__SetTpmFirmwareSvn()
+// This function is used to modify the firmware's SVN during simulation.
+void _rpc__SetTpmFirmwareSvn(uint16_t svn);
 
 //** From TPMCmds.c
 

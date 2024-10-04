@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 //
 // This file contains the implementation of the symmetric block cipher modes
@@ -43,10 +9,10 @@
 
 #include "CryptSym.h"
 
-#define KEY_BLOCK_SIZES(ALG, alg)                                  \
-  static const INT16 alg##KeyBlockSizes[] = {ALG##_KEY_SIZES_BITS, \
-                                             -1,                   \
-                                             ALG##_BLOCK_SIZES};
+#define KEY_BLOCK_SIZES(ALG, alg)                                    \
+    static const INT16 alg##KeyBlockSizes[] = {ALG##_KEY_SIZES_BITS, \
+                                               -1,                   \
+                                               ALG##_BLOCK_SIZES};
 
 FOR_EACH_SYM(KEY_BLOCK_SIZES)
 
@@ -83,16 +49,16 @@ LIB_EXPORT INT16 CryptGetSymmetricBlockSize(
 {
     const INT16* sizes;
     INT16        i;
-#define ALG_CASE(SYM, sym)      \
-  case TPM_ALG_##SYM:           \
-    sizes = sym##KeyBlockSizes; \
-    break
+#define ALG_CASE(SYM, sym)          \
+    case TPM_ALG_##SYM:             \
+        sizes = sym##KeyBlockSizes; \
+        break
     switch(symmetricAlg)
     {
 #define GET_KEY_BLOCK_POINTER(SYM, sym) \
-  case TPM_ALG_##SYM:                   \
-    sizes = sym##KeyBlockSizes;         \
-    break;
+    case TPM_ALG_##SYM:                 \
+        sizes = sym##KeyBlockSizes;     \
+        break;
         // Get the pointer to the block size array
         FOR_EACH_SYM(GET_KEY_BLOCK_POINTER);
 
@@ -150,7 +116,7 @@ LIB_EXPORT TPM_RC CryptSymmetricEncrypt(
     if(dSize == 0)
         return TPM_RC_SUCCESS;
 
-    TEST(algorithm);
+    TPM_DO_SELF_TEST(algorithm);
     blockSize = CryptGetSymmetricBlockSize(algorithm, keySizeInBits);
     if(blockSize == 0)
         return TPM_RC_FAILURE;
@@ -311,7 +277,7 @@ LIB_EXPORT TPM_RC CryptSymmetricDecrypt(
     if(dSize == 0)
         return TPM_RC_SUCCESS;
 
-    TEST(algorithm);
+    TPM_DO_SELF_TEST(algorithm);
     blockSize = CryptGetSymmetricBlockSize(algorithm, keySizeInBits);
     if(blockSize == 0)
         return TPM_RC_FAILURE;
@@ -458,9 +424,5 @@ CryptSymKeyValidate(TPMT_SYM_DEF_OBJECT* symDef, TPM2B_SYM_KEY* key)
 {
     if(key->t.size != BITS_TO_BYTES(symDef->keyBits.sym))
         return TPM_RCS_KEY_SIZE;
-#if ALG_TDES
-    if(symDef->algorithm == TPM_ALG_TDES && !CryptDesValidateKey(key))
-        return TPM_RCS_KEY;
-#endif  // ALG_TDES
     return TPM_RC_SUCCESS;
 }

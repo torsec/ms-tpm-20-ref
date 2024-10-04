@@ -1,42 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-/*(Auto-generated)
- *  Created by NewMarshal; Version 1.4 Apr 7, 2019
- *  Date: Mar  6, 2020  Time: 01:50:10PM
- */
-
 // This file contains the data initializer used for the table-driven marshaling code.
 
 #include "Tpm.h"
@@ -119,7 +80,7 @@ MarshalData_st MarshalData = {
     // TPMA_ALGORITHM_DATA
     {ATTRIBUTES_MTYPE, FOUR_BYTES, 0xFFFFF8F0},
     // TPMA_OBJECT_DATA
-    {ATTRIBUTES_MTYPE, FOUR_BYTES, 0xFFF0F309},
+    {ATTRIBUTES_MTYPE, FOUR_BYTES, 0xFFF0F001},
     // TPMA_SESSION_DATA
     {ATTRIBUTES_MTYPE, ONE_BYTES, 0x00000018},
     // TPMA_ACT_DATA
@@ -137,16 +98,24 @@ MarshalData_st MarshalData = {
       RANGE(PERSISTENT_FIRST, PERSISTENT_LAST, UINT32)}},
     // TPMI_DH_PARENT_DATA
     {VALUES_MTYPE,
-     FOUR_BYTES | TAKES_NULL,
+     FOUR_BYTES,
      (UINT8)TPM_RC_VALUE,
-     2,
-     3,
-     {TPM_RH_NULL,
-      RANGE(TRANSIENT_FIRST, TRANSIENT_LAST, UINT32),
+     6,
+     8,
+     {RANGE(TRANSIENT_FIRST, TRANSIENT_LAST, UINT32),
       RANGE(PERSISTENT_FIRST, PERSISTENT_LAST, UINT32),
+      RANGE(SVN_OWNER_FIRST, SVN_OWNER_LAST, UINT32),
+      RANGE(SVN_ENDORSEMENT_FIRST, SVN_ENDORSEMENT_LAST, UINT32),
+      RANGE(SVN_PLATFORM_FIRST, SVN_PLATFORM_LAST, UINT32),
+      RANGE(SVN_NULL_FIRST, SVN_NULL_LAST, UINT32),
       TPM_RH_OWNER,
       TPM_RH_ENDORSEMENT,
-      TPM_RH_PLATFORM}},
+      TPM_RH_PLATFORM,
+      TPM_RH_NULL,
+      TPM_RH_FW_OWNER,
+      TPM_RH_FW_ENDORSEMENT,
+      TPM_RH_FW_PLATFORM,
+      TPM_RH_FW_NULL}},
     // TPMI_DH_PERSISTENT_DATA
     {MIN_MAX_MTYPE,
      FOUR_BYTES,
@@ -213,11 +182,23 @@ MarshalData_st MarshalData = {
       0x80000001,
       0x80000002}},
     // TPMI_RH_HIERARCHY_DATA
-    {TABLE_MTYPE,
-     FOUR_BYTES | TAKES_NULL,
+    {VALUES_MTYPE,
+     FOUR_BYTES,
      (UINT8)TPM_RC_VALUE,
-     3,
-     {TPM_RH_NULL, TPM_RH_OWNER, TPM_RH_ENDORSEMENT, TPM_RH_PLATFORM}},
+     4,
+     8,
+     {RANGE(SVN_OWNER_FIRST, SVN_OWNER_LAST, UINT32),
+      RANGE(SVN_ENDORSEMENT_FIRST, SVN_ENDORSEMENT_LAST, UINT32),
+      RANGE(SVN_PLATFORM_FIRST, SVN_PLATFORM_LAST, UINT32),
+      RANGE(SVN_NULL_FIRST, SVN_NULL_LAST, UINT32),
+      TPM_RH_OWNER,
+      TPM_RH_ENDORSEMENT,
+      TPM_RH_PLATFORM,
+      TPM_RH_NULL,
+      TPM_RH_FW_OWNER,
+      TPM_RH_FW_ENDORSEMENT,
+      TPM_RH_FW_PLATFORM,
+      TPM_RH_FW_NULL}},
     // TPMI_RH_ENABLES_DATA
     {TABLE_MTYPE,
      FOUR_BYTES | TAKES_NULL,
@@ -245,6 +226,12 @@ MarshalData_st MarshalData = {
       TPM_RH_LOCKOUT,
       TPM_RH_ENDORSEMENT,
       TPM_RH_PLATFORM}},
+    // TPMI_RH_BASE_HIERARCHY_DATA
+    {TABLE_MTYPE,
+     FOUR_BYTES,
+     (UINT8)TPM_RC_VALUE,
+     3,
+     {TPM_RH_OWNER, TPM_RH_ENDORSEMENT, TPM_RH_PLATFORM}},
     // TPMI_RH_PLATFORM_DATA
     {TABLE_MTYPE, FOUR_BYTES, (UINT8)TPM_RC_VALUE, 1, {TPM_RH_PLATFORM}},
     // TPMI_RH_OWNER_DATA
@@ -281,10 +268,32 @@ MarshalData_st MarshalData = {
     // TPMI_RH_LOCKOUT_DATA
     {TABLE_MTYPE, FOUR_BYTES, (UINT8)TPM_RC_VALUE, 1, {TPM_RH_LOCKOUT}},
     // TPMI_RH_NV_INDEX_DATA
+    {VALUES_MTYPE,
+     FOUR_BYTES,
+     (UINT8)TPM_RC_VALUE,
+     3,
+     0,
+     {RANGE(NV_INDEX_FIRST, NV_INDEX_LAST, UINT32),
+      RANGE(EXTERNAL_NV_FIRST, EXTERNAL_NV_LAST, UINT32),
+      RANGE(PERMANENT_NV_FIRST, PERMANENT_NV_LAST, UINT32)}},
+    // TPMI_RH_DEFINED_NV_INDEX_DATA
+    {VALUES_MTYPE,
+     FOUR_BYTES,
+     (UINT8)TPM_RC_VALUE,
+     2,
+     0,
+     {RANGE(NV_INDEX_FIRST, NV_INDEX_LAST, UINT32),
+      RANGE(EXTERNAL_NV_FIRST, EXTERNAL_NV_LAST, UINT32)}},
+    // TPMI_RH_LEGACY_NV_INDEX_DATA
     {MIN_MAX_MTYPE,
      FOUR_BYTES,
      (UINT8)TPM_RC_VALUE,
      {RANGE(NV_INDEX_FIRST, NV_INDEX_LAST, UINT32)}},
+    // TPMI_RH_EXP_NV_INDEX_DATA
+    {MIN_MAX_MTYPE,
+     FOUR_BYTES,
+     (UINT8)TPM_RC_VALUE,
+     {RANGE(EXTERNAL_NV_FIRST, EXTERNAL_NV_LAST, UINT32)}},
     // TPMI_RH_AC_DATA
     {MIN_MAX_MTYPE,
      FOUR_BYTES,
@@ -318,7 +327,7 @@ MarshalData_st MarshalData = {
      (UINT8)TPM_RC_SYMMETRIC,
      {TPM_ALG_NULL,
       RANGE(3, 38, UINT16),
-      (UINT32)((ALG_TDES << 0) | (ALG_AES << 3) | (ALG_XOR << 7) | (ALG_SM4 << 16)),
+      (UINT32)((ALG_AES << 3) | (ALG_XOR << 7) | (ALG_SM4 << 16)),
       (UINT32)((ALG_CAMELLIA << 3))}},
     // TPMI_ALG_SYM_OBJECT_DATA
     {MIN_MAX_MTYPE,
@@ -326,7 +335,7 @@ MarshalData_st MarshalData = {
      (UINT8)TPM_RC_SYMMETRIC,
      {TPM_ALG_NULL,
       RANGE(3, 38, UINT16),
-      (UINT32)((ALG_TDES << 0) | (ALG_AES << 3) | (ALG_SM4 << 16)),
+      (UINT32)((ALG_AES << 3) | (ALG_SM4 << 16)),
       (UINT32)((ALG_CAMELLIA << 3))}},
     // TPMI_ALG_SYM_MODE_DATA
     {MIN_MAX_MTYPE,
@@ -665,6 +674,19 @@ MarshalData_st MarshalData = {
       SET_ELEMENT_TYPE(UNION_STYPE) | SET_ELEMENT_NUMBER(0),
       TPMU_CAPABILITIES_MARSHAL_REF,
       (UINT16)(offsetof(TPMS_CAPABILITY_DATA, data))}},
+    // TPMU_SET_CAPABILITIES_DATA
+    {0, 0, 0, {}, {}},
+    // TPMS_SET_CAPABILITY_DATA_DATA
+    {STRUCTURE_MTYPE,
+     2,
+     {SET_ELEMENT_TYPE(SIMPLE_STYPE) | SET_ELEMENT_SIZE(FOUR_BYTES),
+      TPM_CAP_MARSHAL_REF,
+      (UINT16)(offsetof(TPMS_SET_CAPABILITY_DATA, setCapability)),
+      SET_ELEMENT_TYPE(UNION_STYPE) | SET_ELEMENT_NUMBER(0),
+      TPMU_SET_CAPABILITIES_MARSHAL_REF,
+      (UINT16)(offsetof(TPMS_SET_CAPABILITY_DATA, data))}},
+    // TPM2B_SET_CAPABILITY_DATA_DATA
+    {TPM2B_MTYPE, Type03_MARSHAL_REF},
     // TPMS_CLOCK_INFO_DATA
     {STRUCTURE_MTYPE,
      4,
@@ -851,8 +873,6 @@ MarshalData_st MarshalData = {
       SET_ELEMENT_TYPE(SIMPLE_STYPE),
       TPM2B_AUTH_MARSHAL_REF,
       (UINT16)(offsetof(TPMS_AUTH_RESPONSE, hmac))}},
-    // TPMI_TDES_KEY_BITS_DATA
-    {TABLE_MTYPE, TWO_BYTES, (UINT8)TPM_RC_VALUE, 1, {128 * TDES_128}},
     // TPMI_AES_KEY_BITS_DATA
     {TABLE_MTYPE,
      TWO_BYTES,
@@ -871,14 +891,12 @@ MarshalData_st MarshalData = {
     {6,
      0,
      (UINT16)(offsetof(TPMU_SYM_KEY_BITS_mst, marshalingTypes)),
-     {(UINT32)TPM_ALG_TDES,
-      (UINT32)TPM_ALG_AES,
+     {(UINT32)TPM_ALG_AES,
       (UINT32)TPM_ALG_SM4,
       (UINT32)TPM_ALG_CAMELLIA,
       (UINT32)TPM_ALG_XOR,
       (UINT32)TPM_ALG_NULL},
-     {(UINT16)(TPMI_TDES_KEY_BITS_MARSHAL_REF),
-      (UINT16)(TPMI_AES_KEY_BITS_MARSHAL_REF),
+     {(UINT16)(TPMI_AES_KEY_BITS_MARSHAL_REF),
       (UINT16)(TPMI_SM4_KEY_BITS_MARSHAL_REF),
       (UINT16)(TPMI_CAMELLIA_KEY_BITS_MARSHAL_REF),
       (UINT16)(TPMI_ALG_HASH_MARSHAL_REF),
@@ -887,14 +905,12 @@ MarshalData_st MarshalData = {
     {6,
      0,
      (UINT16)(offsetof(TPMU_SYM_MODE_mst, marshalingTypes)),
-     {(UINT32)TPM_ALG_TDES,
-      (UINT32)TPM_ALG_AES,
+     {(UINT32)TPM_ALG_AES,
       (UINT32)TPM_ALG_SM4,
       (UINT32)TPM_ALG_CAMELLIA,
       (UINT32)TPM_ALG_XOR,
       (UINT32)TPM_ALG_NULL},
      {(UINT16)(TPMI_ALG_SYM_MODE_MARSHAL_REF | NULL_FLAG),
-      (UINT16)(TPMI_ALG_SYM_MODE_MARSHAL_REF | NULL_FLAG),
       (UINT16)(TPMI_ALG_SYM_MODE_MARSHAL_REF | NULL_FLAG),
       (UINT16)(TPMI_ALG_SYM_MODE_MARSHAL_REF | NULL_FLAG),
       (UINT16)(UINT0_MARSHAL_REF),
@@ -1172,9 +1188,10 @@ MarshalData_st MarshalData = {
                | (ALG_ECSCHNORR << 4) | (ALG_ECMQV << 5))}},
     // TPMI_ECC_CURVE_DATA
     {MIN_MAX_MTYPE,
-     TWO_BYTES | HAS_BITS,
+     TWO_BYTES | TAKES_NULL | HAS_BITS,
      (UINT8)TPM_RC_CURVE,
-     {RANGE(1, 32, UINT16),
+     {TPM_ECC_NONE,
+      RANGE(1, 32, UINT16),
       (UINT32)((ECC_NIST_P192 << 0) | (ECC_NIST_P224 << 1) | (ECC_NIST_P256 << 2)
                | (ECC_NIST_P384 << 3) | (ECC_NIST_P521 << 4) | (ECC_BN_P256 << 15)
                | (ECC_BN_P638 << 16) | (ECC_SM2_P256 << 31))}},
@@ -1443,6 +1460,8 @@ MarshalData_st MarshalData = {
       (UINT16)(offsetof(TPMS_NV_PIN_COUNTER_PARAMETERS, pinLimit))}},
     // TPMA_NV_DATA
     {ATTRIBUTES_MTYPE, FOUR_BYTES, 0x01F00300},
+    // TPMA_NV_EXP_DATA
+    {ATTRIBUTES_MTYPE, EIGHT_BYTES, 0xfffffff801F00300},
     // TPMS_NV_PUBLIC_DATA
     {STRUCTURE_MTYPE,
      5,
@@ -1466,6 +1485,48 @@ MarshalData_st MarshalData = {
      (UINT8)(offsetof(TPM2B_NV_PUBLIC, nvPublic)) | SIZE_EQUAL,
      UINT16_MARSHAL_REF,
      TPMS_NV_PUBLIC_MARSHAL_REF},
+    // TPMS_NV_PUBLIC_EXP_ATTR_DATA
+    {STRUCTURE_MTYPE,
+     5,
+     {SET_ELEMENT_TYPE(SIMPLE_STYPE) | SET_ELEMENT_SIZE(FOUR_BYTES),
+      TPMI_RH_NV_EXP_INDEX_MARSHAL_REF,
+      (UINT16)(offsetof(TPMS_NV_PUBLIC_EXP_ATTR, nvIndex)),
+      SET_ELEMENT_TYPE(SIMPLE_STYPE) | SET_ELEMENT_SIZE(TWO_BYTES),
+      TPMI_ALG_HASH_MARSHAL_REF,
+      (UINT16)(offsetof(TPMS_NV_PUBLIC_EXP_ATTR, nameAlg)),
+      SET_ELEMENT_TYPE(SIMPLE_STYPE) | SET_ELEMENT_SIZE(EIGHT_BYTES),
+      TPMA_NV_EXP_MARSHAL_REF,
+      (UINT16)(offsetof(TPMS_NV_PUBLIC_EXP_ATTR, attributes)),
+      SET_ELEMENT_TYPE(SIMPLE_STYPE),
+      TPM2B_DIGEST_MARSHAL_REF,
+      (UINT16)(offsetof(TPMS_NV_PUBLIC_EXP_ATTR, authPolicy)),
+      SET_ELEMENT_TYPE(SIMPLE_STYPE) | SET_ELEMENT_SIZE(TWO_BYTES),
+      Type41_MARSHAL_REF,
+      (UINT16)(offsetof(TPMS_NV_PUBLIC_EXP_ATTR, dataSize))}},
+    // TPMU_NV_PUBLIC_2_DATA
+    {3,
+     0,
+     (UINT16)(offsetof(TPMU_NV_PUBLIC_2_mst, marshalingTypes)),
+     {(UINT32)TPM_HT_NV_INDEX,
+      (UINT32)TPM_HT_EXTERNAL_NV,
+      (UINT32)TPM_HT_PERMANENT_NV},
+     {(UINT16)(TPMS_NV_PUBLIC_MARSHAL_REF),
+      (UINT16)(TPMS_NV_PUBLIC_EXP_ATTR_MARSHAL_REF),
+      (UINT16)(TPMS_NV_PUBLIC_MARSHAL_REF)}},
+    // TPMT_NV_PUBLIC_2_DATA
+    {STRUCTURE_MTYPE,
+     2,
+     {SET_ELEMENT_TYPE(SIMPLE_STYPE) | SET_ELEMENT_SIZE(ONE_BYTES),
+      TPM_HT_MARSHAL_REF,
+      (UINT16)(offsetof(TPMT_NV_PUBLIC_2, handleType)),
+      SET_ELEMENT_TYPE(UNION_STYPE) | SET_ELEMENT_NUMBER(0),
+      TPMU_NV_PUBLIC_2_MARSHAL_REF,
+      (UINT16)(offsetof(TPMT_NV_PUBLIC_2, nvPublic2))}},
+    // TPM2B_NV_PUBLIC_2_DATA
+    {TPM2BS_MTYPE,
+     (UINT8)(offsetof(TPM2B_NV_PUBLIC_2, nvPublic2)) | SIZE_EQUAL,
+     UINT16_MARSHAL_REF,
+     TPMT_NV_PUBLIC_2_MARSHAL_REF},
     // TPM2B_CONTEXT_SENSITIVE_DATA
     {TPM2B_MTYPE, Type42_MARSHAL_REF},
     // TPMS_CONTEXT_DATA_DATA

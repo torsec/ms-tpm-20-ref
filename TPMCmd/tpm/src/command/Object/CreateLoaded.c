@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 #include "Tpm.h"
 #include "CreateLoaded_fp.h"
 
@@ -56,6 +22,13 @@
 //                              key;
 //                              attempt to create a symmetric cipher key that is not
 //                              a decryption key
+//      TPM_RC_FW_LIMITED       The requested hierarchy is FW-limited, but the TPM
+//                              does not support FW-limited objects or the TPM failed
+//                              to derive the Firmware Secret.
+//      TPM_RC_SVN_LIMITED      The requested hierarchy is SVN-limited, but the TPM
+//                              does not support SVN-limited objects or the TPM failed
+//                              to derive the Firmware SVN Secret for the requested
+//                              SVN.
 //      TPM_RC_KDF              incorrect KDF specified for decrypting keyed hash
 //                              object
 //      TPM_RC_KEY              the value of a provided symmetric key is not allowed
@@ -139,8 +112,8 @@ TPM2_CreateLoaded(CreateLoaded_In*  in,  // IN: input parameter list
         if(IS_ATTRIBUTE(
                publicArea->objectAttributes, TPMA_OBJECT, sensitiveDataOrigin))
             return TPM_RCS_ATTRIBUTES;
-        // Check the reset of the attributes
-        result = PublicAttributesValidation(parent, publicArea);
+        // Check the rest of the attributes
+        result = PublicAttributesValidation(parent, 0, publicArea);
         if(result != TPM_RC_SUCCESS)
             return RcSafeAddToResult(result, RC_CreateLoaded_inPublic);
         // Process the template and sensitive areas to get the actual 'label' and
@@ -165,25 +138,37 @@ TPM2_CreateLoaded(CreateLoaded_In*  in,  // IN: input parameter list
         // Check attributes in input public area. CreateChecks() checks the things
         // that are unique to creation and then validates the attributes and values
         // that are common to create and load.
-        result =
-            CreateChecks(parent, publicArea, in->inSensitive.sensitive.data.t.size);
+        result = CreateChecks(parent,
+                              (parent == NULL) ? in->parentHandle : 0,
+                              publicArea,
+                              in->inSensitive.sensitive.data.t.size);
+
         if(result != TPM_RC_SUCCESS)
             return RcSafeAddToResult(result, RC_CreateLoaded_inPublic);
         // Creating a primary object
         if(parent == NULL)
         {
             TPM2B_NAME name;
+            TPM2B_SEED primary_seed;
+
             newObject->attributes.primary = SET;
-            if(in->parentHandle == TPM_RH_ENDORSEMENT)
+            if(HierarchyNormalizeHandle(in->parentHandle) == TPM_RH_ENDORSEMENT)
                 newObject->attributes.epsHierarchy = SET;
+
+            result = HierarchyGetPrimarySeed(in->parentHandle, &primary_seed);
+            if(result != TPM_RC_SUCCESS)
+                return result;
+
             // If so, use the primary seed and the digest of the template
             // to seed the DRBG
             result = DRBG_InstantiateSeeded(
                 (DRBG_STATE*)rand,
-                &HierarchyGetPrimarySeed(in->parentHandle)->b,
+                &primary_seed.b,
                 PRIMARY_OBJECT_CREATION,
                 (TPM2B*)PublicMarshalAndComputeName(publicArea, &name),
                 &in->inSensitive.sensitive.data.b);
+            MemorySet(primary_seed.b.buffer, 0, primary_seed.b.size);
+
             if(result != TPM_RC_SUCCESS)
                 return result;
         }
@@ -196,6 +181,7 @@ TPM2_CreateLoaded(CreateLoaded_In*  in,  // IN: input parameter list
     // Internal data update
     // Create the object
     result = CryptCreateObject(newObject, &in->inSensitive.sensitive, rand);
+    DRBG_Uninstantiate((DRBG_STATE*)rand);
     if(result != TPM_RC_SUCCESS)
         return result;
     // if this is not a Primary key and not a derived key, then return the sensitive

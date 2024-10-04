@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 // This file contains the functions that process the commands received on the
 // control port or the command port of the simulator. The control port is used
@@ -40,32 +6,7 @@
 // of the testing.
 
 //** Includes and Data Definitions
-#include <stdbool.h>
-#include "TpmBuildSwitches.h"
-
-#ifdef _MSC_VER
-#  pragma warning(push, 3)
-#  include <windows.h>
-#  include <winsock.h>
-#  pragma warning(pop)
-#elif defined(__unix__) || defined(__APPLE__)
-#  include "BaseTypes.h"  // on behalf of TpmFail_fp.h
-typedef int SOCKET;
-#else
-#  error "Unsupported platform."
-#endif
-
-#include "Platform_fp.h"
-#include "ExecCommand_fp.h"
-#include "Manufacture_fp.h"
-#include "_TPM_Init_fp.h"
-#include "_TPM_Hash_Start_fp.h"
-#include "_TPM_Hash_Data_fp.h"
-#include "_TPM_Hash_End_fp.h"
-#include "TpmFail_fp.h"
-
-#include "TpmTcpProtocol.h"
-#include "Simulator_fp.h"
+#include "simulatorPrivate.h"
 
 static bool s_isPowerOn = false;
 
@@ -268,15 +209,35 @@ void _rpc__RsaKeyCacheControl(int state)
     return;
 }
 
-#define TPM_RH_ACT_0 0x40000110
-
 //*** _rpc__ACT_GetSignaled()
 // This function is used to count the ACT second tick.
 bool _rpc__ACT_GetSignaled(uint32_t actHandle)
 {
+#if ACT_SUPPORT
     // If TPM power is on...
     if(s_isPowerOn)
         // ... query the platform
         return _plat__ACT_GetSignaled(actHandle - TPM_RH_ACT_0);
+#else   // ACT_SUPPORT
+    NOT_REFERENCED(actHandle);
+#endif  // ACT_SUPPORT
     return false;
+}
+
+//*** _rpc__SetTpmFirmwareHash()
+// This function is used to modify the firmware's hash during simulation.
+void _rpc__SetTpmFirmwareHash(uint32_t hash)
+{
+#if SIMULATION
+    _plat__SetTpmFirmwareHash(hash);
+#endif
+}
+
+//*** _rpc__SetTpmFirmwareSvn()
+// This function is used to modify the firmware's SVN during simulation.
+void _rpc__SetTpmFirmwareSvn(uint16_t svn)
+{
+#if SIMULATION
+    _plat__SetTpmFirmwareSvn(svn);
+#endif
 }

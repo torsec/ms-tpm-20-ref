@@ -1,79 +1,11 @@
 
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 //
 // This file contains the socket interface to a TPM simulator.
 //
 //** Includes, Locals, Defines and Function Prototypes
-#include "TpmBuildSwitches.h"
-#include <stdio.h>
-#include <stdbool.h>
-
-#ifdef _MSC_VER
-#  pragma warning(push, 3)
-#  include <windows.h>
-#  include <winsock.h>
-#  pragma warning(pop)
-typedef int socklen_t;
-#elif defined(__unix__) || defined(__APPLE__)
-#  include <string.h>
-#  include <unistd.h>
-#  include <errno.h>
-#  include <stdint.h>
-#  include <netinet/in.h>
-#  include <sys/socket.h>
-#  include <pthread.h>
-#  define ZeroMemory(ptr, sz) (memset((ptr), 0, (sz)))
-#  define closesocket(x)      close(x)
-#  define INVALID_SOCKET      (-1)
-#  define SOCKET_ERROR        (-1)
-#  define WSAGetLastError()   (errno)
-#  define INT_PTR             intptr_t
-
-typedef int SOCKET;
-#else
-#  error "Unsupported platform."
-#endif
-
-#include "TpmTcpProtocol.h"
-#include "Manufacture_fp.h"
-#include "TpmProfile.h"
-
-#include "Simulator_fp.h"
-#include "Platform_fp.h"
+#include "simulatorPrivate.h"
+#include <string.h>
 
 // To access key cache control in TPM
 void RsaKeyCacheControl(int state);
@@ -100,7 +32,10 @@ struct
 
 //*** CreateSocket()
 // This function creates a socket listening on 'PortNumber'.
-static int CreateSocket(int PortNumber, SOCKET* listenSocket)
+// If PickPorts is true, the server finds the next available port if the specified
+// port was unavailable.
+static int CreateSocket(
+    int PortNumber, bool PickPorts, SOCKET* ListenSocket, int* ActualPort)
 {
     struct sockaddr_in MyAddress;
     int                res;
@@ -116,8 +51,8 @@ static int CreateSocket(int PortNumber, SOCKET* listenSocket)
     }
 #endif
     // create listening socket
-    *listenSocket = socket(PF_INET, SOCK_STREAM, 0);
-    if(INVALID_SOCKET == *listenSocket)
+    *ListenSocket = socket(PF_INET, SOCK_STREAM, 0);
+    if(INVALID_SOCKET == *ListenSocket)
     {
         printf("Cannot create server listen socket.  Error is 0x%x\n",
                WSAGetLastError());
@@ -125,22 +60,39 @@ static int CreateSocket(int PortNumber, SOCKET* listenSocket)
     }
     // bind the listening socket to the specified port
     ZeroMemory(&MyAddress, sizeof(MyAddress));
-    MyAddress.sin_port   = htons((short)PortNumber);
+    MyAddress.sin_port   = htons((unsigned short)PortNumber);
     MyAddress.sin_family = AF_INET;
 
-    res = bind(*listenSocket, (struct sockaddr*)&MyAddress, sizeof(MyAddress));
+    res = bind(*ListenSocket, (struct sockaddr*)&MyAddress, sizeof(MyAddress));
+    if(PickPorts)
+    {
+        while(res == SOCKET_ERROR && MyAddress.sin_port < UINT16_MAX)
+        {
+            // keep trying as long as the underlying error is that the port is already in use
+            if(WSAGetLastError() != WSAEADDRINUSE)
+            {
+                break;
+            }
+            MyAddress.sin_port++;
+            res =
+                bind(*ListenSocket, (struct sockaddr*)&MyAddress, sizeof(MyAddress));
+        }
+    }
     if(res == SOCKET_ERROR)
     {
         printf("Bind error.  Error is 0x%x\n", WSAGetLastError());
         return -1;
     }
+
     // listen/wait for server connections
-    res = listen(*listenSocket, 3);
+    res = listen(*ListenSocket, 3);
     if(res == SOCKET_ERROR)
     {
         printf("Listen error.  Error is 0x%x\n", WSAGetLastError());
         return -1;
     }
+
+    *ActualPort = ntohs(MyAddress.sin_port);
     return 0;
 }
 
@@ -222,6 +174,20 @@ bool PlatformServer(SOCKET s)
                 WriteUINT32(s, _rpc__ACT_GetSignaled(actHandle));
                 break;
             }
+            case TPM_SET_FW_HASH:
+            {
+                uint32_t hash;
+                OK = ReadUINT32(s, &hash);
+                _rpc__SetTpmFirmwareHash(hash);
+                break;
+            }
+            case TPM_SET_FW_SVN:
+            {
+                uint32_t svn;
+                OK = ReadUINT32(s, &svn);
+                _rpc__SetTpmFirmwareSvn((uint16_t)svn);
+                break;
+            }
             default:
                 printf("Unrecognized platform interface command %d\n", (int)Command);
                 WriteUINT32(s, 1);
@@ -231,23 +197,67 @@ bool PlatformServer(SOCKET s)
     }
 }
 
+//*** WritePortToFile()
+// This function writes the given port out to a file.
+bool WritePortToFile(const char* filename, int port)
+{
+    FILE* f;
+
+#ifdef _MSC_VER
+#  pragma warning(push)
+#  pragma warning(disable : 4996)
+#endif  // _MSC_VER
+    f = fopen(filename, "w");
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif  // _MSC_VER
+    if(f == NULL)
+    {
+        return false;
+    }
+
+    fprintf(f, "%d\n", port);
+    return fclose(f) == 0;
+}
+
+//*** DeletePortFile()
+// This function deletes the port file.
+bool DeletePortFile(const char* filename)
+{
+    return remove(filename) == 0;
+}
+
+struct platformParameters
+{
+    int  port;
+    bool pickPorts;
+};
+
 //*** PlatformSvcRoutine()
 // This function is called to set up the socket interfaces to listen for
 // commands.
-DWORD WINAPI PlatformSvcRoutine(LPVOID port)
+DWORD WINAPI PlatformSvcRoutine(LPVOID parms)
 {
-    int                PortNumber = (int)(INT_PTR)port;
-    SOCKET             listenSocket, serverSocket;
-    struct sockaddr_in HerAddress;
-    int                res;
-    socklen_t          length;
-    bool               continueServing;
-    //
-    res = CreateSocket(PortNumber, &listenSocket);
+    struct platformParameters* platformParms = (struct platformParameters*)parms;
+    int                        PortNumber    = platformParms->port;
+    bool                       PickPorts     = platformParms->pickPorts;
+    SOCKET                     listenSocket, serverSocket;
+    struct sockaddr_in         HerAddress;
+    int                        res;
+    socklen_t                  length;
+    bool                       continueServing;
+    const char*                portFile = "platform.port";
+
+    res = CreateSocket(PortNumber, PickPorts, &listenSocket, &PortNumber);
     if(res != 0)
     {
-        printf("Create platform service socket fail\n");
+        printf("Could not create platform service socket\n");
         return res;
+    }
+    if(!WritePortToFile(portFile, PortNumber))
+    {
+        printf("Could not write port to %s\n", portFile);
+        return (DWORD)-1;
     }
     // Loop accepting connections one-by-one until we are killed or asked to stop
     // Note the platform service is single-threaded so we don't listen for a new
@@ -271,7 +281,12 @@ DWORD WINAPI PlatformSvcRoutine(LPVOID port)
         continueServing = PlatformServer(serverSocket);
         closesocket(serverSocket);
     } while(continueServing);
-
+    if(!DeletePortFile(portFile))
+    {
+        printf("Could not delete %s", portFile);
+        return (DWORD)-1;
+    }
+    free(parms);
     return 0;
 }
 
@@ -279,36 +294,39 @@ DWORD WINAPI PlatformSvcRoutine(LPVOID port)
 // This function starts a new thread waiting for platform signals.
 // Platform signals are processed one at a time in the order in which they are
 // received.
-int PlatformSignalService(int PortNumber)
+// If PickPorts is true, the server finds the next available port if the specified
+// port was unavailable.
+int PlatformSignalService(int PortNumber, bool PickPorts)
 {
+    struct platformParameters* parms;
+
+    parms = (struct platformParameters*)malloc(sizeof(struct platformParameters));
+    parms->port      = PortNumber;
+    parms->pickPorts = PickPorts;
 #if defined(_MSC_VER)
     HANDLE hPlatformSvc;
     int    ThreadId;
-    int    port = PortNumber;
-    //
-    // Create service thread for platform signals
+
     hPlatformSvc = CreateThread(NULL,
                                 0,
                                 (LPTHREAD_START_ROUTINE)PlatformSvcRoutine,
-                                (LPVOID)(INT_PTR)port,
+                                (LPVOID)parms,
                                 0,
                                 (LPDWORD)&ThreadId);
     if(hPlatformSvc == NULL)
     {
-        printf("Thread Creation failed\n");
+        printf("Could not create platform thread\n");
         return -1;
     }
     return 0;
 #else
     pthread_t thread_id;
     int       ret;
-    int       port = PortNumber;
 
-    ret            = pthread_create(
-        &thread_id, NULL, (void*)PlatformSvcRoutine, (LPVOID)(INT_PTR)port);
+    ret = pthread_create(&thread_id, NULL, (void*)PlatformSvcRoutine, (LPVOID)parms);
     if(ret == -1)
     {
-        printf("pthread_create failed: %s", strerror(ret));
+        printf("Could not create platform thread: %s\n", strerror(ret));
     }
     return ret;
 #endif  // _MSC_VER
@@ -316,7 +334,9 @@ int PlatformSignalService(int PortNumber)
 
 //*** RegularCommandService()
 // This function services regular commands.
-int RegularCommandService(int PortNumber)
+// If PickPorts is true, the server finds the next available port if the specified
+// port was unavailable.
+int RegularCommandService(int PortNumber, bool PickPorts)
 {
     SOCKET             listenSocket;
     SOCKET             serverSocket;
@@ -324,12 +344,18 @@ int RegularCommandService(int PortNumber)
     int                res;
     socklen_t          length;
     bool               continueServing;
-    //
-    res = CreateSocket(PortNumber, &listenSocket);
+    const char*        portFile = "command.port";
+
+    res = CreateSocket(PortNumber, PickPorts, &listenSocket, &PortNumber);
     if(res != 0)
     {
-        printf("Create platform service socket fail\n");
+        printf("Could not create command service socket\n");
         return res;
+    }
+    if(!WritePortToFile(portFile, PortNumber))
+    {
+        printf("Could not write port to %s\n", portFile);
+        return -1;
     }
     // Loop accepting connections one-by-one until we are killed or asked to stop
     // Note the TPM command service is single-threaded so we don't listen for
@@ -353,6 +379,12 @@ int RegularCommandService(int PortNumber)
         continueServing = TpmServer(serverSocket);
         closesocket(serverSocket);
     } while(continueServing);
+
+    if(!DeletePortFile(portFile))
+    {
+        printf("Could not delete %s", portFile);
+        return -1;
+    }
     return 0;
 }
 
@@ -423,7 +455,7 @@ static int ActTimeService(void)
         hThr = CreateThread(NULL,
                             0,
                             (LPTHREAD_START_ROUTINE)SimulatorTimeServiceRoutine,
-                            (LPVOID)(INT_PTR)NULL,
+                            (LPVOID)NULL,
                             0,
                             (LPDWORD)&ThreadId);
         if(hThr != NULL)
@@ -433,10 +465,8 @@ static int ActTimeService(void)
 #  else
         pthread_t thread_id;
         //
-        ret = pthread_create(&thread_id,
-                             NULL,
-                             (void*)SimulatorTimeServiceRoutine,
-                             (LPVOID)(INT_PTR)NULL);
+        ret = pthread_create(
+            &thread_id, NULL, (void*)SimulatorTimeServiceRoutine, (LPVOID)NULL);
 #  endif  // _MSC_VER
 
         if(ret != 0)
@@ -450,15 +480,20 @@ static int ActTimeService(void)
 #endif  // RH_ACT_0
 
 //*** StartTcpServer()
-// This is the main entry-point to the TCP server.  The server listens on port
+// This is the main entry-point to the TCP server.  The server listens on the port
 // specified.
+// If PickPorts is true, the server finds the next available port if the specified
+// port was unavailable.
 //
 // Note that there is no way to specify the network interface in this implementation.
-int StartTcpServer(int PortNumber)
+int StartTcpServer(int PortNumber, bool PickPorts)
 {
     int res;
-//
-#ifdef RH_ACT_0
+
+#if ACT_SUPPORT
+#  if !RH_ACT_0
+#    error "Compliance tests currently require ACT_0 if ACT_SUPPORT"
+#  endif
     // Start the Time Service routine
     res = ActTimeService();
     if(res != 0)
@@ -466,17 +501,17 @@ int StartTcpServer(int PortNumber)
         printf("TimeService failed\n");
         return res;
     }
-#endif
+#endif  // ACT_SUPPORT
 
     // Start Platform Signal Processing Service
-    res = PlatformSignalService(PortNumber + 1);
+    res = PlatformSignalService(PortNumber + 1, PickPorts);
     if(res != 0)
     {
         printf("PlatformSignalService failed\n");
         return res;
     }
     // Start Regular/DRTM TPM command service
-    res = RegularCommandService(PortNumber);
+    res = RegularCommandService(PortNumber, PickPorts);
     if(res != 0)
     {
         printf("RegularCommandService failed\n");
@@ -562,10 +597,10 @@ bool ReadUINT32(SOCKET s, uint32_t* val)
 //*** ReadVarBytes()
 // Get a uint32-length-prepended binary array.  Note that the 4-byte length is
 // in network byte order (big-endian).
-bool ReadVarBytes(SOCKET s, char* buffer, uint32_t* BytesReceived, uint32_t MaxLen)
+bool ReadVarBytes(SOCKET s, char* buffer, uint32_t* BytesReceived, int MaxLen)
 {
-    uint32_t length;
-    bool     res;
+    int  length;
+    bool res;
     //
     res = ReadBytes(s, (char*)&length, 4);
     if(!res)
@@ -574,7 +609,7 @@ bool ReadVarBytes(SOCKET s, char* buffer, uint32_t* BytesReceived, uint32_t MaxL
     *BytesReceived = length;
     if(length > MaxLen)
     {
-        printf("Buffer too big.  Client says %u\n", length);
+        printf("Buffer too big.  Client says %d\n", length);
         return false;
     }
     if(length == 0)

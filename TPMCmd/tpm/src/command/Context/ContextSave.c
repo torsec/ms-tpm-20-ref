@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 #include "Tpm.h"
 
 #if CC_ContextSave  // Conditional expansion of this file
@@ -145,7 +111,7 @@ TPM2_ContextSave(ContextSave_In*  in,  // IN: input parameter list
                 out->context.savedHandle =
                     (object->attributes.stClear == SET) ? 0x80000002 : 0x80000000;
             // Get object hierarchy
-            out->context.hierarchy = ObjectGetHierarchy(object);
+            out->context.hierarchy = object->hierarchy;
 
             break;
         }
@@ -207,7 +173,9 @@ TPM2_ContextSave(ContextSave_In*  in,  // IN: input parameter list
                sizeof(out->context.sequence));
 
     // Compute context encryption key
-    ComputeContextProtectionKey(&out->context, &symKey, &iv);
+    result = ComputeContextProtectionKey(&out->context, &symKey, &iv);
+    if(result != TPM_RC_SUCCESS)
+        return result;
 
     // Encrypt context blob
     CryptSymmetricEncrypt(out->context.contextBlob.t.buffer + integritySize,
@@ -222,7 +190,9 @@ TPM2_ContextSave(ContextSave_In*  in,  // IN: input parameter list
     // Compute integrity hash for the object
     // In this implementation, the same routine is used for both sessions
     // and objects.
-    ComputeContextIntegrity(&out->context, &integrity);
+    result = ComputeContextIntegrity(&out->context, &integrity);
+    if(result != TPM_RC_SUCCESS)
+        return result;
 
     // add integrity at the beginning of context blob
     buffer = out->context.contextBlob.t.buffer;

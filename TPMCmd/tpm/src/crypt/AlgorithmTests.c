@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 // This file contains the code to perform the various self-test functions.
 //
@@ -43,7 +9,7 @@
 
 #define SELF_TEST_DATA
 
-#if SELF_TEST
+#if ENABLE_SELF_TESTS
 
 // These includes pull in the data structures. They contain data definitions for the
 // various tests.
@@ -54,33 +20,33 @@
 #  include "HashTestData.h"
 #  include "KdfTestData.h"
 
-#  define TEST_DEFAULT_TEST_HASH(vector)      \
-    if(TEST_BIT(DEFAULT_TEST_HASH, g_toTest)) \
-      TestHash(DEFAULT_TEST_HASH, vector);
+#  define TEST_DEFAULT_TEST_HASH(vector)        \
+      if(TEST_BIT(DEFAULT_TEST_HASH, g_toTest)) \
+          TestHash(DEFAULT_TEST_HASH, vector);
 
 // Make sure that the algorithm has been tested
-#  define CLEAR_BOTH(alg)         \
-    {                             \
-      CLEAR_BIT(alg, *toTest);    \
-      if(toTest != &g_toTest)     \
-        CLEAR_BIT(alg, g_toTest); \
-    }
+#  define CLEAR_BOTH(alg)               \
+      {                                 \
+          CLEAR_BIT(alg, *toTest);      \
+          if(toTest != &g_toTest)       \
+              CLEAR_BIT(alg, g_toTest); \
+      }
 
-#  define SET_BOTH(alg)         \
-    {                           \
-      SET_BIT(alg, *toTest);    \
-      if(toTest != &g_toTest)   \
-        SET_BIT(alg, g_toTest); \
-    }
+#  define SET_BOTH(alg)               \
+      {                               \
+          SET_BIT(alg, *toTest);      \
+          if(toTest != &g_toTest)     \
+              SET_BIT(alg, g_toTest); \
+      }
 
-#  define TEST_BOTH(alg)                                                       \
-    ((toTest != &g_toTest) ? TEST_BIT(alg, *toTest) || TEST_BIT(alg, g_toTest) \
-                           : TEST_BIT(alg, *toTest))
+#  define TEST_BOTH(alg)                                                         \
+      ((toTest != &g_toTest) ? TEST_BIT(alg, *toTest) || TEST_BIT(alg, g_toTest) \
+                             : TEST_BIT(alg, *toTest))
 
 // Can only cancel if doing a list.
-#  define CHECK_CANCELED                           \
-    if(_plat__IsCanceled() && toTest != &g_toTest) \
-      return TPM_RC_CANCELED;
+#  define CHECK_CANCELED                             \
+      if(_plat__IsCanceled() && toTest != &g_toTest) \
+          return TPM_RC_CANCELED;
 
 //** Hash Tests
 
@@ -98,10 +64,10 @@ static TPM_RC TestHash(TPM_ALG_ID hashAlg, ALGORITHM_VECTOR* toTest)
     //    TPM2B_TYPE(HMAC_BLOCK, DEFAULT_TEST_HASH_BLOCK_SIZE);
 
     pAssert(hashAlg != TPM_ALG_NULL);
-#  define HASH_CASE_FOR_TEST(HASH, hash) \
-    case ALG_##HASH##_VALUE:             \
-      testDigest = &c_##HASH##_digest.b; \
-      break;
+#  define HASH_CASE_FOR_TEST(HASH, hash)     \
+      case ALG_##HASH##_VALUE:               \
+          testDigest = &c_##HASH##_digest.b; \
+          break;
     switch(hashAlg)
     {
         FOR_EACH_HASH(HASH_CASE_FOR_TEST)

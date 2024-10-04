@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //**Introduction
 /*
     The code in this file is used to manage the session context counter.
@@ -637,7 +603,7 @@ SessionContextSave(TPM_HANDLE       handle,    // IN: session handle
 //
 // If the gap is at a maximum, then the only session that can be loaded is
 // the oldest session, otherwise TPM_RC_CONTEXT_GAP is returned.
-///
+//
 // This function requires that 'handle' references a valid saved session.
 //
 //  Return Type: TPM_RC
@@ -903,6 +869,21 @@ SessionCapGetLoaded(TPMI_SH_POLICY handle,     // IN: start handle
     return more;
 }
 
+//*** SessionCapGetOneLoaded()
+// This function returns whether a session handle exists and is loaded.
+BOOL SessionCapGetOneLoaded(TPMI_SH_POLICY handle)  // IN: handle
+{
+    pAssert(HandleGetType(handle) == TPM_HT_LOADED_SESSION);
+
+    if((handle & HR_HANDLE_MASK) < MAX_ACTIVE_SESSIONS
+       && gr.contextArray[(handle & HR_HANDLE_MASK)])
+    {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 //*** SessionCapGetSaved()
 // This function returns a list of handles for saved session, starting at
 // 'handle'.
@@ -922,11 +903,7 @@ SessionCapGetSaved(TPMI_SH_HMAC handle,     // IN: start handle
     TPMI_YES_NO more = NO;
     UINT32      i;
 
-#ifdef TPM_HT_SAVED_SESSION
     pAssert(HandleGetType(handle) == TPM_HT_SAVED_SESSION);
-#else
-    pAssert(HandleGetType(handle) == TPM_HT_ACTIVE_SESSION);
-#endif
 
     // Initialize output handle list
     handleList->count = 0;
@@ -963,6 +940,21 @@ SessionCapGetSaved(TPMI_SH_HMAC handle,     // IN: start handle
     }
 
     return more;
+}
+
+//*** SessionCapGetOneSaved()
+// This function returns whether a session handle exists and is saved.
+BOOL SessionCapGetOneSaved(TPMI_SH_HMAC handle)  // IN: handle
+{
+    pAssert(HandleGetType(handle) == TPM_HT_SAVED_SESSION);
+
+    if((handle & HR_HANDLE_MASK) < MAX_ACTIVE_SESSIONS
+       && gr.contextArray[(handle & HR_HANDLE_MASK)])
+    {
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 //*** SessionCapGetLoadedNumber()
@@ -1023,4 +1015,13 @@ SessionCapGetActiveAvail(void)
     }
 
     return num;
+}
+
+//*** IsCpHashUnionOccupied()
+// This function indicates whether the session attributes indicate that one of
+// the members of the union containing `cpHash` are set.
+BOOL IsCpHashUnionOccupied(SESSION_ATTRIBUTES attrs)
+{
+    return attrs.isBound || attrs.isCpHashDefined || attrs.isNameHashDefined
+           || attrs.isParametersHashDefined || attrs.isTemplateHashDefined;
 }

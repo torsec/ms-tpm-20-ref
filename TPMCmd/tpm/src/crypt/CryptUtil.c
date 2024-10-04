@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 //
 //  This module contains the interfaces to the CryptoEngine and provides
@@ -347,12 +313,6 @@ static TPM_RC CryptGenerateKeySymmetric(
                          &sensitiveCreate->data.b,
                          sizeof(sensitive->sensitive.sym.t.buffer));
     }
-#if ALG_TDES
-    else if(publicArea->parameters.symDetail.sym.algorithm == TPM_ALG_TDES)
-    {
-        result = CryptGenerateKeyDes(publicArea, sensitive, rand);
-    }
-#endif
     else
     {
         sensitive->sensitive.sym.t.size = DRBG_Generate(
@@ -436,7 +396,7 @@ BOOL CryptInit(void)
 
     // Do any library initializations that are necessary. If any fails,
     // the caller should go into failure mode;
-    ok = SupportLibInit();
+    ok = ExtMath_LibInit();
     ok = ok && CryptSymInit();
     ok = ok && CryptRandInit();
     ok = ok && CryptHashInit();
@@ -540,17 +500,23 @@ CryptSecretEncrypt(OBJECT*      encryptKey,  // IN: encryption key object
                    TPM2B_ENCRYPTED_SECRET* secret  // OUT: secret structure
 )
 {
-    TPMT_RSA_DECRYPT scheme;
-    TPM_RC           result = TPM_RC_SUCCESS;
+    TPM_RC result = TPM_RC_SUCCESS;
     //
     if(data == NULL || secret == NULL)
         return TPM_RC_FAILURE;
 
+    // CryptKDFe was fixed to not add a NULL byte as per NIST.SP.800-56Cr2.pdf
+    // (required for ACVP tests). This check ensures backwards compatibility with
+    // previous versions of the TPM reference code by verifying the label itself
+    // has a NULL terminator.  Note the TPM spec specifies that the label must be NULL
+    // terminated.  This is only a "new" failure path in the sense that it adds a
+    // runtime check of hardcoded constants; provided the code is correct it will never
+    // fail, and running the compliance tests will verify this isn't hit.
+    if((label == NULL) || (label->size == 0) || (label->buffer[label->size - 1] != 0))
+        return TPM_RC_FAILURE;
+
     // The output secret value has the size of the digest produced by the nameAlg.
     data->t.size = CryptHashGetDigestSize(encryptKey->publicArea.nameAlg);
-    // The encryption scheme is OAEP using the nameAlg of the encrypt key.
-    scheme.scheme                 = TPM_ALG_OAEP;
-    scheme.details.anySig.hashAlg = encryptKey->publicArea.nameAlg;
 
     if(!IS_ATTRIBUTE(encryptKey->publicArea.objectAttributes, TPMA_OBJECT, decrypt))
         return TPM_RC_ATTRIBUTES;
@@ -559,6 +525,11 @@ CryptSecretEncrypt(OBJECT*      encryptKey,  // IN: encryption key object
 #if ALG_RSA
         case TPM_ALG_RSA:
         {
+            // The encryption scheme is OAEP using the nameAlg of the encrypt key.
+            TPMT_RSA_DECRYPT scheme;
+            scheme.scheme                 = TPM_ALG_OAEP;
+            scheme.details.anySig.hashAlg = encryptKey->publicArea.nameAlg;
+
             // Create secret data from RNG
             CryptRandomGenerate(data->t.size, data->t.buffer);
 
@@ -682,6 +653,16 @@ CryptSecretDecrypt(OBJECT*      decryptKey,   // IN: decrypt key
 )
 {
     TPM_RC result = TPM_RC_SUCCESS;
+
+    // CryptKDFe was fixed to not add a NULL byte as per NIST.SP.800-56Cr2.pdf
+    // (required for ACVP tests). This check ensures backwards compatibility with
+    // previous versions of the TPM reference code by verifying the label itself
+    // has a NULL terminator.  Note the TPM spec specifies that the label must be NULL
+    // terminated.  This is only a "new" failure path in the sense that it adds a
+    // runtime check of hardcoded constants; provided the code is correct it will never
+    // fail, and running the compliance tests will verify this isn't hit.
+    if((label == NULL) || (label->size == 0) || (label->buffer[label->size - 1] != 0))
+        return TPM_RC_FAILURE;
 
     // Decryption for secret
     switch(decryptKey->publicArea.type)
@@ -835,7 +816,7 @@ CryptSecretDecrypt(OBJECT*      decryptKey,   // IN: decrypt key
                         iv.b.buffer, nonceCaller->t.buffer, nonceCaller->t.size);
                 }
                 // make sure secret will fit
-                if(secret->t.size > data->t.size)
+                if(secret->t.size > sizeof(data->t.buffer))
                     return TPM_RC_FAILURE;
                 data->t.size = secret->t.size;
                 // CFB decrypt, using nonceCaller as iv
@@ -961,8 +942,7 @@ CryptParameterDecryption(
     // Parameter encryption for a non-2B is not supported.
     if(leadingSizeInByte != 2)
     {
-        FAIL(FATAL_ERROR_INTERNAL);
-        return TPM_RC_FAILURE;
+        FAIL_RC(FATAL_ERROR_INTERNAL);
     }
 
     // Retrieve encrypted data size.

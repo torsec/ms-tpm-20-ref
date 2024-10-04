@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 //
 // This file contains implementation of the math functions that are performed
@@ -39,6 +5,7 @@
 // big-endian bytes.
 //
 #include "Tpm.h"
+#include "TpmMath_Util_fp.h"
 
 //** Functions
 
@@ -93,6 +60,7 @@ int SignedCompareB(const UINT32 aSize,  // IN: size of a
         return UnsignedCompareB(aSize, a, bSize, b);
 }
 
+#if ALG_RSA
 //*** ModExpB
 // This function is used to do modular exponentiation in support of RSA.
 // The most typical uses are: 'c' = 'm'^'e' mod 'n' (RSA encrypt) and
@@ -125,29 +93,30 @@ ModExpB(UINT32 cSize,  // IN: the size of the output buffer. It will
         const BYTE*  n  // IN: modulus
 )
 {
-    BN_MAX(bnC);
-    BN_MAX(bnM);
-    BN_MAX(bnE);
-    BN_MAX(bnN);
+    CRYPT_INT_MAX(bnC);
+    CRYPT_INT_MAX(bnM);
+    CRYPT_INT_MAX(bnE);
+    CRYPT_INT_MAX(bnN);
     NUMBYTES tSize  = (NUMBYTES)nSize;
     TPM_RC   retVal = TPM_RC_SUCCESS;
 
     // Convert input parameters
-    BnFromBytes(bnM, m, (NUMBYTES)mSize);
-    BnFromBytes(bnE, e, (NUMBYTES)eSize);
-    BnFromBytes(bnN, n, (NUMBYTES)nSize);
+    ExtMath_IntFromBytes(bnM, m, (NUMBYTES)mSize);
+    ExtMath_IntFromBytes(bnE, e, (NUMBYTES)eSize);
+    ExtMath_IntFromBytes(bnN, n, (NUMBYTES)nSize);
 
     // Make sure that the output is big enough to hold the result
     // and that 'm' is less than 'n' (the modulus)
     if(cSize < nSize)
-        ERROR_RETURN(TPM_RC_NO_RESULT);
-    if(BnUnsignedCmp(bnM, bnN) >= 0)
-        ERROR_RETURN(TPM_RC_SIZE);
-    BnModExp(bnC, bnM, bnE, bnN);
-    BnToBytes(bnC, c, &tSize);
+        ERROR_EXIT(TPM_RC_NO_RESULT);
+    if(ExtMath_UnsignedCmp(bnM, bnN) >= 0)
+        ERROR_EXIT(TPM_RC_SIZE);
+    ExtMath_ModExp(bnC, bnM, bnE, bnN);
+    ExtMath_IntToBytes(bnC, c, &tSize);
 Exit:
     return retVal;
 }
+#endif  // ALG_RSA
 
 //*** DivideB()
 // Divide an integer ('n') by an integer ('d') producing a quotient ('q') and
@@ -163,21 +132,21 @@ LIB_EXPORT TPM_RC DivideB(const TPM2B* n,  // IN: numerator
                           TPM2B*       r   // OUT: remainder
 )
 {
-    BN_MAX_INITIALIZED(bnN, n);
-    BN_MAX_INITIALIZED(bnD, d);
-    BN_MAX(bnQ);
-    BN_MAX(bnR);
+    CRYPT_INT_MAX_INITIALIZED(bnN, n);
+    CRYPT_INT_MAX_INITIALIZED(bnD, d);
+    CRYPT_INT_MAX(bnQ);
+    CRYPT_INT_MAX(bnR);
     //
     // Do divide with converted values
-    BnDiv(bnQ, bnR, bnN, bnD);
+    ExtMath_Divide(bnQ, bnR, bnN, bnD);
 
-    // Convert the BIGNUM result back to 2B format using the size of the original
+    // Convert the Crypt_Int* result back to 2B format using the size of the original
     // number
     if(q != NULL)
-        if(!BnTo2B(bnQ, q, q->size))
+        if(!TpmMath_IntTo2B(bnQ, q, q->size))
             return TPM_RC_NO_RESULT;
     if(r != NULL)
-        if(!BnTo2B(bnR, r, r->size))
+        if(!TpmMath_IntTo2B(bnR, r, r->size))
             return TPM_RC_NO_RESULT;
     return TPM_RC_SUCCESS;
 }

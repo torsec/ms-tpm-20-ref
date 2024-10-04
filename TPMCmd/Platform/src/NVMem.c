@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 //
 //    This file contains the NV read and write access methods.  This implementation
@@ -53,6 +19,7 @@ static int   s_NeedsManufacture = FALSE;
 //**Functions
 
 #if FILE_BACKED_NV
+const char* s_NvFilePath = "NVChip";
 
 //*** NvFileOpen()
 // This function opens the file used to hold the NV image.
@@ -61,22 +28,14 @@ static int   s_NeedsManufacture = FALSE;
 //  -1          error
 static int NvFileOpen(const char* mode)
 {
-#  if defined(NV_FILE_PATH)
-#    define TO_STRING(s)      TO_STRING_IMPL(s)
-#    define TO_STRING_IMPL(s) #s
-    const char* s_NvFilePath = TO_STRING(NV_FILE_PATH);
-#    undef TO_STRING
-#    undef TO_STRING_IMPL
-#  else
-    const char* s_NvFilePath = "NVChip";
-#  endif
-
     // Try to open an exist NVChip file for read/write
 #  if defined _MSC_VER && 1
     if(fopen_s(&s_NvFile, s_NvFilePath, mode) != 0)
+    {
         s_NvFile = NULL;
+    }
 #  else
-    s_NvFile                 = fopen(s_NvFilePath, mode);
+    s_NvFile = fopen(s_NvFilePath, mode);
 #  endif
     return (s_NvFile == NULL) ? -1 : 0;
 }
@@ -157,18 +116,24 @@ LIB_EXPORT void _plat__NvErrors(int recoverable, int unrecoverable)
 //      0           if success
 //      > 0         if receive recoverable error
 //      <0          if unrecoverable error
+#define NV_ENABLE_SUCCESS 0
+#define NV_ENABLE_FAILED  (-1)
 LIB_EXPORT int _plat__NVEnable(
-    void* platParameter  // IN: platform specific parameters
+    void*  platParameter,  // platform specific parameter
+    size_t paramSize       // size of parameter. If size == 0, then
+                           // parameter is a sizeof(void*) scalar and should
+                           // be cast to an integer (intptr_t), not dereferenced.
 )
 {
     NOT_REFERENCED(platParameter);  // to keep compiler quiet
-                                    //
+    NOT_REFERENCED(paramSize);      // to keep compiler quiet
+
     // Start assuming everything is OK
     s_NV_unrecoverable = FALSE;
     s_NV_recoverable   = FALSE;
 #if FILE_BACKED_NV
     if(s_NvFile != NULL)
-        return 0;
+        return NV_ENABLE_SUCCESS;
     // Initialize all the bytes in the ram copy of the NV
     _plat__NvMemoryClear(0, NV_MEMORY_SIZE);
 
@@ -202,15 +167,25 @@ LIB_EXPORT int _plat__NVEnable(
     // simulation purposes, use the signaling interface to indicate if an error is
     // to be simulated and the type of the error.
     if(s_NV_unrecoverable)
-        return -1;
+        return NV_ENABLE_FAILED;
+    s_NvIsAvailable = TRUE;
     return s_NV_recoverable;
 }
 
 //***_plat__NVDisable()
 // Disable NV memory
-LIB_EXPORT void _plat__NVDisable(int delete  // IN: If TRUE, delete the NV contents.
+LIB_EXPORT void _plat__NVDisable(
+    void*  platParameter,  // platform specific parameter
+    size_t paramSize       // size of parameter. If size == 0, then
+                           // parameter is a sizeof(void*) scalar and should
+                           // be cast to an integer (intptr_t), not dereferenced.
 )
 {
+    NOT_REFERENCED(paramSize);  // to keep compiler quiet
+    int delete = ((intptr_t)platParameter != 0)
+                     ? TRUE
+                     : FALSE;  // IN: If TRUE (!=0), delete the NV contents.
+
 #if FILE_BACKED_NV
     if(NULL != s_NvFile)
     {
@@ -229,21 +204,21 @@ LIB_EXPORT void _plat__NVDisable(int delete  // IN: If TRUE, delete the NV conte
     }
     s_NvFile = NULL;  // Set file handle to NULL
 #endif
+    s_NvIsAvailable = FALSE;
     return;
 }
 
-//***_plat__IsNvAvailable()
+//***_plat__GetNvReadyState()
 // Check if NV is available
 //  Return Type: int
 //      0               NV is available
 //      1               NV is not available due to write failure
 //      2               NV is not available due to rate limit
-LIB_EXPORT int _plat__IsNvAvailable(void)
+LIB_EXPORT int _plat__GetNvReadyState(void)
 {
-    int retVal = 0;
-    // NV is not available if the TPM is in failure mode
+    int retVal = NV_READY;
     if(!s_NvIsAvailable)
-        retVal = 1;
+        retVal = NV_WRITEFAILURE;
 #if FILE_BACKED_NV
     else
         retVal = (s_NvFile == NULL);
@@ -253,28 +228,44 @@ LIB_EXPORT int _plat__IsNvAvailable(void)
 
 //***_plat__NvMemoryRead()
 // Function: Read a chunk of NV memory
-LIB_EXPORT void _plat__NvMemoryRead(unsigned int startOffset,  // IN: read start
-                                    unsigned int size,  // IN: size of bytes to read
-                                    void*        data   // OUT: data buffer
+//  Return Type: int
+//      TRUE(1)         offset and size is within available NV size
+//      FALSE(0)        otherwise; also trigger failure mode
+LIB_EXPORT int _plat__NvMemoryRead(unsigned int startOffset,  // IN: read start
+                                   unsigned int size,  // IN: size of bytes to read
+                                   void*        data   // OUT: data buffer
 )
 {
     assert(startOffset + size <= NV_MEMORY_SIZE);
-    memcpy(data, &s_NV[startOffset], size);  // Copy data from RAM
-    return;
+    if(startOffset + size <= NV_MEMORY_SIZE)
+    {
+        memcpy(data, &s_NV[startOffset], size);  // Copy data from RAM
+        return TRUE;
+    }
+    return FALSE;
 }
 
-//*** _plat__NvIsDifferent()
+//*** _plat__NvGetChangedStatus()
 // This function checks to see if the NV is different from the test value. This is
 // so that NV will not be written if it has not changed.
 //  Return Type: int
-//      TRUE(1)         the NV location is different from the test value
-//      FALSE(0)        the NV location is the same as the test value
-LIB_EXPORT int _plat__NvIsDifferent(unsigned int startOffset,  // IN: read start
-                                    unsigned int size,  // IN: size of bytes to read
-                                    void*        data   // IN: data buffer
+//      NV_HAS_CHANGED(1)       the NV location is different from the test value
+//      NV_IS_SAME(0)           the NV location is the same as the test value
+//      NV_INVALID_LOCATION(-1) the NV location is invalid; also triggers failure mode
+LIB_EXPORT int _plat__NvGetChangedStatus(
+    unsigned int startOffset,  // IN: read start
+    unsigned int size,         // IN: size of bytes to read
+    void*        data          // IN: data buffer
 )
 {
-    return (memcmp(&s_NV[startOffset], data, size) != 0);
+    assert(startOffset + size <= NV_MEMORY_SIZE);
+    if(startOffset + size <= NV_MEMORY_SIZE)
+    {
+        return (memcmp(&s_NV[startOffset], data, size) != 0);
+    }
+    // the NV location is invalid; the assert above should have triggered failure
+    // mode
+    return NV_INVALID_LOCATION;
 }
 
 //***_plat__NvMemoryWrite()
@@ -284,11 +275,15 @@ LIB_EXPORT int _plat__NvIsDifferent(unsigned int startOffset,  // IN: read start
 // NOTE: A useful optimization would be for this code to compare the current
 // contents of NV with the local copy and note the blocks that have changed. Then
 // only write those blocks when _plat__NvCommit() is called.
+//  Return Type: int
+//      TRUE(1)         offset and size is within available NV size
+//      FALSE(0)        otherwise; also trigger failure mode
 LIB_EXPORT int _plat__NvMemoryWrite(unsigned int startOffset,  // IN: write start
                                     unsigned int size,  // IN: size of bytes to write
                                     void*        data   // OUT: data buffer
 )
 {
+    assert(startOffset + size <= NV_MEMORY_SIZE);
     if(startOffset + size <= NV_MEMORY_SIZE)
     {
         memcpy(&s_NV[startOffset], data, size);  // Copy the data to the NV image
@@ -300,30 +295,37 @@ LIB_EXPORT int _plat__NvMemoryWrite(unsigned int startOffset,  // IN: write star
 //***_plat__NvMemoryClear()
 // Function is used to set a range of NV memory bytes to an implementation-dependent
 // value. The value represents the erase state of the memory.
-LIB_EXPORT void _plat__NvMemoryClear(
-    unsigned int start,  // IN: clear start
-    unsigned int size    // IN: number of bytes to clear
+LIB_EXPORT int _plat__NvMemoryClear(unsigned int startOffset,  // IN: clear start
+                                    unsigned int size  // IN: number of bytes to clear
 )
 {
-    assert(start + size <= NV_MEMORY_SIZE);
-    // In this implementation, assume that the erase value for NV is all 1s
-    memset(&s_NV[start], 0xff, size);
+    assert(startOffset + size <= NV_MEMORY_SIZE);
+    if(startOffset + size <= NV_MEMORY_SIZE)
+    {
+        // In this implementation, assume that the erase value for NV is all 1s
+        memset(&s_NV[startOffset], 0xff, size);
+        return TRUE;
+    }
+    return FALSE;
 }
 
 //***_plat__NvMemoryMove()
 // Function: Move a chunk of NV memory from source to destination
 //      This function should ensure that if there overlap, the original data is
 //      copied before it is written
-LIB_EXPORT void _plat__NvMemoryMove(
-    unsigned int sourceOffset,  // IN: source offset
-    unsigned int destOffset,    // IN: destination offset
-    unsigned int size           // IN: size of data being moved
+LIB_EXPORT int _plat__NvMemoryMove(unsigned int sourceOffset,  // IN: source offset
+                                   unsigned int destOffset,  // IN: destination offset
+                                   unsigned int size  // IN: size of data being moved
 )
 {
     assert(sourceOffset + size <= NV_MEMORY_SIZE);
     assert(destOffset + size <= NV_MEMORY_SIZE);
-    memmove(&s_NV[destOffset], &s_NV[sourceOffset], size);  // Move data in RAM
-    return;
+    if(sourceOffset + size <= NV_MEMORY_SIZE && destOffset + size <= NV_MEMORY_SIZE)
+    {
+        memmove(&s_NV[destOffset], &s_NV[sourceOffset], size);  // Move data in RAM
+        return TRUE;
+    }
+    return FALSE;
 }
 
 //***_plat__NvCommit()
@@ -338,6 +340,16 @@ LIB_EXPORT int _plat__NvCommit(void)
     return (NvFileCommit() ? 0 : 1);
 #else
     return 0;
+#endif
+}
+
+//***_plat__TearDown
+// notify platform that TPM_TearDown was called so platform can cleanup or
+// zeroize anything in the Platform.  This should zeroize NV as well.
+LIB_EXPORT void _plat__TearDown()
+{
+#if FILE_BACKED_NV
+    // remove(s_NvFilePath);
 #endif
 }
 

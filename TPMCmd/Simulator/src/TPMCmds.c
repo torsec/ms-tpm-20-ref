@@ -1,70 +1,14 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 // This file contains the entry point for the simulator.
 
 //** Includes, Defines, Data Definitions, and Function Prototypes
-#include "TpmBuildSwitches.h"
+#include "simulatorPrivate.h"
+#include <CryptoInterface.h>
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <string.h>
-
-#ifdef _MSC_VER
-#  pragma warning(push, 3)
-#  include <windows.h>
-#  include <winsock.h>
-#  pragma warning(pop)
-#elif defined(__unix__) || defined(__APPLE__)
-#  define _strcmpi strcasecmp
-typedef int SOCKET;
-#else
-#  error "Unsupported platform."
-#endif
-
-#include "TpmTcpProtocol.h"
-#include "Manufacture_fp.h"
-#include "Platform_fp.h"
-#include "Simulator_fp.h"
-
-#define PURPOSE                    \
-  "TPM 2.0 Reference Simulator.\n" \
-  "Copyright (c) Microsoft Corporation. All rights reserved."
+#define PURPOSE                                                                 \
+    "TPM 2.0 Reference Simulator.\n"                                            \
+    "Copyright (c) Microsoft Corporation; Trusted Computing Group. All rights " \
+    "reserved."
 
 #define DEFAULT_TPM_PORT 2321
 
@@ -98,14 +42,18 @@ static void Usage(const char* programName)
     fprintf(stderr, "%s\n\n", PURPOSE);
     fprintf(stderr,
             "Usage:  %s [PortNum] [opts]\n\n"
-            "Starts the TPM server listening on TCP port PortNum (by default %d).\n\n"
+            "Starts the TPM server listening on TCP port PortNum (by default "
+            "%d).\n\n"
             "An option can be in the short form (one letter preceded with '-' or "
             "'/')\n"
             "or in the full form (preceded with '--' or no option marker at all).\n"
             "Possible options are:\n"
             "   -h (--help) or ? - print this message\n"
             "   -m (--manufacture) - forces NV state of the TPM simulator to be "
-            "(re)manufactured\n",
+            "(re)manufactured\n"
+            "   -p (--pick_ports) - choose the next available TCP ports "
+            "automatically "
+            "if PortNum is not available\n",
             programName,
             DEFAULT_TPM_PORT);
     exit(1);
@@ -213,12 +161,27 @@ static void CmdLineParser_Done(const char* programName)
     Usage(programName);
 }
 
+#if CRYPTO_LIB_REPORTING
+void ReportCryptoLibs()
+{
+    _CRYPTO_IMPL_DESCRIPTION sym, hash, math = {0};
+    _crypto_GetSymImpl(&sym);
+    _crypto_GetHashImpl(&hash);
+    _crypto_GetMathImpl(&math);
+    printf("Crypto implementation information:\n");
+    printf("  Symmetric:   %s (%s)\n", sym.name, sym.version);
+    printf("  Hashing:     %s (%s)\n", hash.name, hash.version);
+    printf("  Math:        %s (%s)\n", math.name, math.version);
+}
+#endif  // CRYPTO_LIB_REPORTING
+
 //*** main()
 // This is the main entry point for the simulator.
 // It registers the interface and starts listening for clients
 int main(int argc, char* argv[])
 {
     bool manufacture = false;
+    bool pick_ports  = false;
     int  PortNum     = DEFAULT_TPM_PORT;
 
     // Parse command line options
@@ -233,6 +196,10 @@ int main(int argc, char* argv[])
         if(CmdLineParser_IsOptPresent("manufacture", "m"))
         {
             manufacture = true;
+        }
+        if(CmdLineParser_IsOptPresent("pick_ports", "p"))
+        {
+            pick_ports = true;
         }
         if(CmdLineParser_More())
         {
@@ -257,37 +224,42 @@ int main(int argc, char* argv[])
         }
         CmdLineParser_Done(argv[0]);
     }
+
+#if CRYPTO_LIB_REPORTING
+    ReportCryptoLibs();
+#endif  // CRYPTO_LIB_REPORTING
+
     printf("LIBRARY_COMPATIBILITY_CHECK is %s\n",
            (LIBRARY_COMPATIBILITY_CHECK ? "ON" : "OFF"));
     // Enable NV memory
-    _plat__NVEnable(NULL);
+    _plat__NVEnable(NULL, 0);
 
     if(manufacture || _plat__NVNeedsManufacture())
     {
         printf("Manufacturing NV state...\n");
-        if(TPM_Manufacture(1) != 0)
+        if(TPM_Manufacture(MANUF_FIRST_TIME) != MANUF_OK)
         {
             // if the manufacture didn't work, then make sure that the NV file doesn't
             // survive. This prevents manufacturing failures from being ignored the
             // next time the code is run.
-            _plat__NVDisable(1);
+            _plat__NVDisable((void*)TRUE, 0);
             exit(1);
         }
         // Coverage test - repeated manufacturing attempt
-        if(TPM_Manufacture(0) != 1)
+        if(TPM_Manufacture(MANUF_REMANUFACTURE) != MANUF_ALREADY_DONE)
         {
             exit(2);
         }
         // Coverage test - re-manufacturing
         TPM_TearDown();
-        if(TPM_Manufacture(1) != 0)
+        if(TPM_Manufacture(MANUF_FIRST_TIME) != MANUF_OK)
         {
             exit(3);
         }
     }
     // Disable NV memory
-    _plat__NVDisable(0);
+    _plat__NVDisable((void*)FALSE, 0);
 
-    StartTcpServer(PortNum);
+    StartTcpServer(PortNum, pick_ports);
     return EXIT_SUCCESS;
 }

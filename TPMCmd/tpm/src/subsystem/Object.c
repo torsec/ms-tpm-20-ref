@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 // This file contains the functions that manage the object store of the TPM.
 
@@ -190,43 +156,15 @@ void GetQualifiedName(TPMI_DH_OBJECT handle,     // IN: handle of the object
     return;
 }
 
-//*** ObjectGetHierarchy()
-// This function returns the handle for the hierarchy of an object.
-TPMI_RH_HIERARCHY
-ObjectGetHierarchy(OBJECT* object  // IN :object
-)
-{
-    if(object->attributes.spsHierarchy)
-    {
-        return TPM_RH_OWNER;
-    }
-    else if(object->attributes.epsHierarchy)
-    {
-        return TPM_RH_ENDORSEMENT;
-    }
-    else if(object->attributes.ppsHierarchy)
-    {
-        return TPM_RH_PLATFORM;
-    }
-    else
-    {
-        return TPM_RH_NULL;
-    }
-}
-
 //*** GetHierarchy()
 // This function returns the handle of the hierarchy to which a handle belongs.
-// This function is similar to ObjectGetHierarchy() but this routine takes
-// a handle but ObjectGetHierarchy() takes an pointer to an object.
 //
 // This function requires that 'handle' references a loaded object.
 TPMI_RH_HIERARCHY
 GetHierarchy(TPMI_DH_OBJECT handle  // IN :object handle
 )
 {
-    OBJECT* object = HandleToObject(handle);
-    //
-    return ObjectGetHierarchy(object);
+    return HandleToObject(handle)->hierarchy;
 }
 
 //*** FindEmptyObjectSlot()
@@ -251,6 +189,7 @@ OBJECT* FindEmptyObjectSlot(TPMI_DH_OBJECT* handle  // OUT: (optional)
                 *handle = i + TRANSIENT_FIRST;
             // Initialize the object attributes
             MemorySet(&object->attributes, 0, sizeof(OBJECT_ATTRIBUTES));
+            object->hierarchy = TPM_RH_NULL;
             return object;
         }
     }
@@ -289,8 +228,9 @@ void ObjectSetLoadedAttributes(OBJECT* object,  // IN: object attributes to fina
     // If parent handle is a permanent handle, it is a primary (unless it is NULL
     if(parent == NULL)
     {
+        object->hierarchy          = parentHandle;
         object->attributes.primary = SET;
-        switch(parentHandle)
+        switch(HierarchyNormalizeHandle(object->hierarchy))
         {
             case TPM_RH_ENDORSEMENT:
                 object->attributes.epsHierarchy = SET;
@@ -321,6 +261,7 @@ void ObjectSetLoadedAttributes(OBJECT* object,  // IN: object attributes to fina
         // is external
         object->attributes.temporary = parent->attributes.temporary
                                        || object->attributes.external;
+        object->hierarchy = parent->hierarchy;
     }
     // If this is an external object, set the QN == name but don't SET other
     // key properties ('parent' or 'derived')
@@ -352,7 +293,8 @@ void ObjectSetLoadedAttributes(OBJECT* object,  // IN: object attributes to fina
 }
 
 //*** ObjectLoad()
-// Common function to load an object. A loaded object has its public area validated
+// Common function to load a non-primary object (i.e., either an Ordinary Object,
+// or an External Object). A loaded object has its public area validated
 // (unless its 'nameAlg' is TPM_ALG_NULL). If a sensitive part is loaded, it is
 // verified to be correct and if both public and sensitive parts are loaded, then
 // the cryptographic binding between the objects is validated. This function does
@@ -390,15 +332,27 @@ ObjectLoad(OBJECT* object,           // IN: pointer to object slot
         if(sensitive->seedValue.t.size > CryptHashGetDigestSize(publicArea->nameAlg))
             return TPM_RCS_KEY_SIZE + blameSensitive;
         // Check attributes and schemes for consistency
-        result = PublicAttributesValidation(parent, publicArea);
+        // For the purposes of attributes validation on this non-primary object,
+        // either:
+        // - parent is not NULL and therefore its attributes are checked for
+        //   consistency with the parent, OR
+        // - parent is NULL but the object is not a primary object, either
+        result =
+            PublicAttributesValidation(parent, /*primaryHierarchy = */ 0, publicArea);
     }
     if(result != TPM_RC_SUCCESS)
         return RcSafeAddToResult(result, blamePublic);
 
     // Sensitive area and binding checks
 
-    // On load, check nothing if the parent is fixedTPM. For all other cases, validate
-    // the keys.
+    // On load, check nothing if the parent is fixedTPM.
+    // If the parent is fixedTPM, then this TPM produced this key blob (either
+    // by import, or creation). If the parent is not fixedTPM, then an external
+    // copy of the parent's protection seed might have been used to create the
+    // blob, and we have to validate it.
+    // NOTE: By the time a TPMT_SENSITIVE has been decrypted and passed to this
+    // function, it has been validated against the corresponding TPMT_PUBLIC.
+    // For more information about this check, see PrivateToSensitive.
     if((parent == NULL)
        || ((parent != NULL)
            && !IS_ATTRIBUTE(
@@ -456,7 +410,7 @@ static HASH_OBJECT* AllocateSequenceSlot(
     // Validate that the proper location of the hash state data relative to the
     // object state data. It would be good if this could have been done at compile
     // time but it can't so do it in something that can be removed after debug.
-    cAssert(offsetof(HASH_OBJECT, auth) == offsetof(OBJECT, publicArea.authPolicy));
+    MUST_BE(offsetof(HASH_OBJECT, auth) == offsetof(OBJECT, publicArea.authPolicy));
 
     if(object != NULL)
     {
@@ -737,8 +691,8 @@ ObjectLoadEvict(TPM_HANDLE* handle,  // IN:OUT: evict object handle.  If success
     // that the hierarchy is disabled.
     // If the associated hierarchy is disabled, make it look like the
     // handle is not defined
-    if(ObjectGetHierarchy(object) == TPM_RH_ENDORSEMENT && gc.ehEnable == CLEAR
-       && GetCommandCode(commandIndex) != TPM_CC_EvictControl)
+    if(HierarchyNormalizeHandle(object->hierarchy) == TPM_RH_ENDORSEMENT
+       && gc.ehEnable == CLEAR && GetCommandCode(commandIndex) != TPM_CC_EvictControl)
         return TPM_RC_HANDLE;
 
     return result;
@@ -850,7 +804,7 @@ BOOL ObjectIsStorage(TPMI_DH_OBJECT handle  // IN: object handle
 }
 
 //*** ObjectCapGetLoaded()
-// This function returns a a list of handles of loaded object, starting from
+// This function returns a list of handles of loaded object, starting from
 // 'handle'. 'Handle' must be in the range of valid transient object handles,
 // but does not have to be the handle of a loaded transient object.
 //  Return Type: TPMI_YES_NO
@@ -900,6 +854,29 @@ ObjectCapGetLoaded(TPMI_DH_OBJECT handle,     // IN: start handle
     }
 
     return more;
+}
+
+//*** ObjectCapGetOneLoaded()
+// This function returns whether a handle is loaded.
+BOOL ObjectCapGetOneLoaded(TPMI_DH_OBJECT handle)  // IN: handle
+{
+    UINT32 i;
+
+    pAssert(HandleGetType(handle) == TPM_HT_TRANSIENT);
+
+    // Iterate object slots to get loaded object handles
+    for(i = handle - TRANSIENT_FIRST; i < MAX_LOADED_OBJECTS; i++)
+    {
+        if(s_objects[i].attributes.occupied == TRUE)
+        {
+            // A valid transient object can not be the copy of a persistent object
+            pAssert(s_objects[i].attributes.evict == CLEAR);
+
+            return TRUE;
+        }
+    }
+
+    return FALSE;
 }
 
 //*** ObjectCapGetTransientAvail()

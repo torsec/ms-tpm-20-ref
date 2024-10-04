@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 // This file contains the functions that return the type of a handle.
 
@@ -66,6 +32,18 @@ NextPermanentHandle(TPM_HANDLE inHandle  // IN: the handle to check
     // or go out of range
     for(; inHandle <= TPM_RH_LAST; inHandle++)
     {
+        // Skip over gaps in the reserved handle space.
+        if(inHandle > TPM_RH_FW_NULL && inHandle < SVN_OWNER_FIRST)
+            inHandle = SVN_OWNER_FIRST;
+        if(inHandle > SVN_OWNER_FIRST && inHandle <= SVN_OWNER_LAST)
+            inHandle = SVN_ENDORSEMENT_FIRST;
+        if(inHandle > SVN_ENDORSEMENT_FIRST && inHandle <= SVN_ENDORSEMENT_LAST)
+            inHandle = SVN_PLATFORM_FIRST;
+        if(inHandle > SVN_PLATFORM_FIRST && inHandle <= SVN_PLATFORM_LAST)
+            inHandle = SVN_NULL_FIRST;
+        if(inHandle > SVN_NULL_FIRST)
+            inHandle = TPM_RH_LAST;
+
         switch(inHandle)
         {
             case TPM_RH_OWNER:
@@ -75,8 +53,20 @@ NextPermanentHandle(TPM_HANDLE inHandle  // IN: the handle to check
             case TPM_RH_ENDORSEMENT:
             case TPM_RH_PLATFORM:
             case TPM_RH_PLATFORM_NV:
-#ifdef VENDOR_PERMANENT
-            case VENDOR_PERMANENT:
+#if FW_LIMITED_SUPPORT
+            case TPM_RH_FW_OWNER:
+            case TPM_RH_FW_ENDORSEMENT:
+            case TPM_RH_FW_PLATFORM:
+            case TPM_RH_FW_NULL:
+#endif
+#if SVN_LIMITED_SUPPORT
+            case TPM_RH_SVN_OWNER_BASE:
+            case TPM_RH_SVN_ENDORSEMENT_BASE:
+            case TPM_RH_SVN_PLATFORM_BASE:
+            case TPM_RH_SVN_NULL_BASE:
+#endif
+#if VENDOR_PERMANENT_AUTH_ENABLED == YES
+            case VENDOR_PERMANENT_AUTH_HANDLE:
 #endif
 // Each of the implemented ACT
 #define ACT_IMPLEMENTED_CASE(N) case TPM_RH_ACT_##N:
@@ -139,6 +129,25 @@ PermanentCapGetHandles(TPM_HANDLE   handle,     // IN: start handle
     return more;
 }
 
+//*** PermanentCapGetOneHandle()
+// This function returns whether a permanent handle exists.
+BOOL PermanentCapGetOneHandle(TPM_HANDLE handle)  // IN: handle
+{
+    UINT32 i;
+
+    pAssert(HandleGetType(handle) == TPM_HT_PERMANENT);
+
+    // Iterate permanent handle range
+    for(i = NextPermanentHandle(handle); i != 0; i = NextPermanentHandle(i + 1))
+    {
+        if(i == handle)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
 //*** PermanentHandleGetPolicy()
 // This function returns a list of the permanent handles of PCR, started from
 // 'handle'. If 'handle' is larger than the largest permanent handle, an empty list
@@ -193,4 +202,31 @@ PermanentHandleGetPolicy(TPM_HANDLE handle,  // IN: start handle
         }
     }
     return more;
+}
+
+//*** PermanentHandleGetOnePolicy()
+// This function returns a permanent handle's policy, if present.
+BOOL PermanentHandleGetOnePolicy(TPM_HANDLE          handle,  // IN: handle
+                                 TPMS_TAGGED_POLICY* policy   // OUT: tagged policy
+)
+{
+    pAssert(HandleGetType(handle) == TPM_HT_PERMANENT);
+
+    if(NextPermanentHandle(handle) == handle)
+    {
+        TPM2B_DIGEST policyDigest;
+        TPM_ALG_ID   policyAlg;
+        // Check to see if this permanent handle has a policy
+        policyAlg = EntityGetAuthPolicy(handle, &policyDigest);
+        if(policyAlg == TPM_ALG_ERROR)
+        {
+            return FALSE;
+        }
+        policy->handle             = handle;
+        policy->policyHash.hashAlg = policyAlg;
+        MemoryCopy(
+            &policy->policyHash.digest, policyDigest.t.buffer, policyDigest.t.size);
+        return TRUE;
+    }
+    return FALSE;
 }

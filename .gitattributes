@@ -6,10 +6,11 @@
 *.py        text eol=lf
 *.ps1       text eol=lf
 *.yml       text eol=lf
-*.sh        text eol=lf
-# VS & CMD prefer CRLF
+# not sure if VS likes LF in its project files
 *.vcproj    text eol=crlf
+# ditto for CMD.exe
 *.cmd       text eol=crlf
+*.sh        text eol=lf
 
 ###############################################################################
 # behavior for image files

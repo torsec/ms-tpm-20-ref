@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes, Defines, and Types
 #include "Tpm.h"
 #include <stdio.h>
@@ -61,7 +27,7 @@ BOOL TpmSizeChecks(void)
 #    if ALG_ECC
     {
         // This is just to allow simple access to the ecc curve data during debug
-        const ECC_CURVE* ecc = CryptEccGetParametersByCurveId(3);
+        const TPM_ECC_CURVE_METADATA* ecc = CryptEccGetParametersByCurveId(3);
         if(ecc == NULL)
             ecc = NULL;
     }
@@ -92,6 +58,7 @@ BOOL TpmSizeChecks(void)
         NOT_REFERENCED(compliantPrimarySeedSize);
         NOT_REFERENCED(primarySeedSize);
 
+#    if ALG_RSA
         {
             TPMT_SENSITIVE* p;
             // This assignment keeps compiler from complaining about a conditional
@@ -99,11 +66,13 @@ BOOL TpmSizeChecks(void)
             UINT16 max_rsa_key_bytes = MAX_RSA_KEY_BYTES;
             if((max_rsa_key_bytes / 2) != (sizeof(p->sensitive.rsa.t.buffer) / 5))
             {
-                printf("Sensitive part of TPMT_SENSITIVE is undersized. May be caused"
+                printf("Sensitive part of TPMT_SENSITIVE is undersized. May be "
+                       "caused"
                        " by use of wrong version of Part 2.\n");
                 PASS = FALSE;
             }
         }
+#    endif  // ALG_RSA
 #    if TABLE_DRIVEN_MARSHAL
         printf("sizeof(MarshalData) = %zu\n", sizeof(MarshalData_st));
 #    endif
@@ -180,6 +149,7 @@ BOOL TpmSizeChecks(void)
             PASS = FALSE;
         }
     }
+#    if ACT_SUPPORT
     // Check that the platorm implementes each of the ACT that the TPM thinks are
     // present
     {
@@ -199,6 +169,7 @@ BOOL TpmSizeChecks(void)
             }
         }
     }
+#    endif  // ACT_SUPPORT
     {
         // Had a problem with the macros coming up with some bad values. Make sure
         // the size is rational

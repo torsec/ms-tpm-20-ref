@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 // This code implements the ACT update code. It does not use a mutex. This code uses
 // a platform service (_plat__ACT_UpdateCounter()) that returns 'false' if the update
@@ -44,9 +10,12 @@
 //** Includes
 #include "Tpm.h"
 #include "ACT_spt_fp.h"
-#include "Platform_fp.h"
+// TODO_RENAME_INC_FOLDER:platform_interface refers to the TPM_CoreLib platform interface
+#include <platform_interface/tpm_to_platform_interface.h>
 
 //** Functions
+
+#if ACT_SUPPORT
 
 //*** _ActResume()
 // This function does the resume processing for an ACT. It updates the saved count
@@ -82,15 +51,15 @@ BOOL ActStartup(STARTUP_TYPE type)
     if(type != SU_RESUME)
     {
         go.signaledACT = 0;
-#define CLEAR_ACT_POLICY(N)                    \
-  go.ACT_##N.hashAlg           = TPM_ALG_NULL; \
-  go.ACT_##N.authPolicy.b.size = 0;
+#  define CLEAR_ACT_POLICY(N)                      \
+      go.ACT_##N.hashAlg           = TPM_ALG_NULL; \
+      go.ACT_##N.authPolicy.b.size = 0;
         FOR_EACH_ACT(CLEAR_ACT_POLICY)
     }
     else
     {
         // Resume each of the implemented ACT
-#define RESUME_ACT(N) _ActResume(0x##N, &go.ACT_##N);
+#  define RESUME_ACT(N) _ActResume(0x##N, &go.ACT_##N);
 
         FOR_EACH_ACT(RESUME_ACT)
     }
@@ -143,7 +112,7 @@ BOOL ActShutdown(TPM_SU state  //IN: the type of the shutdown.
         // This will be populated as each of the ACT is queried
         go.signaledACT = 0;
         // Get the current count and the signaled state
-#define SAVE_ACT_STATE(N) _ActSaveState(0x##N, &go.ACT_##N);
+#  define SAVE_ACT_STATE(N) _ActSaveState(0x##N, &go.ACT_##N);
 
         FOR_EACH_ACT(SAVE_ACT_STATE);
     }
@@ -262,3 +231,29 @@ ActGetCapabilityData(TPM_HANDLE     actHandle,  // IN: the handle for the starti
     // was filled and there are no more ACT values to return
     return NO;
 }
+
+//*** ActGetOneCapability()
+// This function returns an ACT's capability, if present.
+BOOL ActGetOneCapability(TPM_HANDLE     actHandle,  // IN: the handle for the ACT
+                         TPMS_ACT_DATA* actData     // OUT: ACT data
+)
+{
+    UINT32 act = actHandle - TPM_RH_ACT_0;
+
+    if(ActIsImplemented(actHandle - TPM_RH_ACT_0))
+    {
+        memset(&actData->attributes, 0, sizeof(actData->attributes));
+        actData->handle  = actHandle;
+        actData->timeout = _plat__ACT_GetRemaining(act);
+        if(_plat__ACT_GetSignaled(act))
+            SET_ATTRIBUTE(actData->attributes, TPMA_ACT, signaled);
+        else
+            CLEAR_ATTRIBUTE(actData->attributes, TPMA_ACT, signaled);
+        if(go.preservedSignaled & (1 << act))
+            SET_ATTRIBUTE(actData->attributes, TPMA_ACT, preserveSignaled);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+#endif  // ACT_SUPPORT

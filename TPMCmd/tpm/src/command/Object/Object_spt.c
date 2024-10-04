@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes
 #include "Tpm.h"
 #include "Object_spt_fp.h"
@@ -358,12 +324,21 @@ BOOL ObjectIsParent(OBJECT* parentObject  // IN: parent handle
 
 //*** CreateChecks()
 // Attribute checks that are unique to creation.
+// If parentObject is not NULL, then this function checks the object's
+// attributes as an Ordinary or Derived Object with the given parent.
+// If parentObject is NULL, and primaryHandle is not 0, then this function
+// checks the object's attributes as a Primary Object in the given hierarchy.
+// If parentObject is NULL, and primaryHandle is 0, then this function checks
+// the object's attributes as an External Object.
 //  Return Type: TPM_RC
 //      TPM_RC_ATTRIBUTES   sensitiveDataOrigin is not consistent with the
 //                          object type
 //      other               returns from PublicAttributesValidation()
 TPM_RC
-CreateChecks(OBJECT* parentObject, TPMT_PUBLIC* publicArea, UINT16 sensitiveDataSize)
+CreateChecks(OBJECT*           parentObject,
+             TPMI_RH_HIERARCHY primaryHierarchy,
+             TPMT_PUBLIC*      publicArea,
+             UINT16            sensitiveDataSize)
 {
     TPMA_OBJECT attributes = publicArea->objectAttributes;
     TPM_RC      result     = TPM_RC_SUCCESS;
@@ -408,10 +383,12 @@ CreateChecks(OBJECT* parentObject, TPMT_PUBLIC* publicArea, UINT16 sensitiveData
     }
     if(TPM_RC_SUCCESS == result)
     {
-        result = PublicAttributesValidation(parentObject, publicArea);
+        result =
+            PublicAttributesValidation(parentObject, primaryHierarchy, publicArea);
     }
     return result;
 }
+
 //*** SchemeChecks
 // This function is called by TPM2_LoadExternal() and PublicAttributesValidation().
 // This function validates the schemes in the public area of an object.
@@ -624,13 +601,17 @@ SchemeChecks(OBJECT*      parentObject,  // IN: parent (null if primary seed)
 //                          algorithm in 'publicArea'
 //   other                  returns from SchemeChecks()
 TPM_RC
-PublicAttributesValidation(OBJECT*      parentObject,  // IN: input parent object
-                           TPMT_PUBLIC* publicArea  // IN: public area of the object
-)
+PublicAttributesValidation(
+    // IN: input parent object (if ordinary or derived object; NULL otherwise)
+    OBJECT* parentObject,
+    // IN: hierarchy (if primary object; 0 otherwise)
+    TPMI_RH_HIERARCHY primaryHierarchy,
+    // IN: public area of the object
+    TPMT_PUBLIC* publicArea)
 {
     TPMA_OBJECT attributes       = publicArea->objectAttributes;
     TPMA_OBJECT parentAttributes = TPMA_ZERO_INITIALIZER();
-    //
+
     if(parentObject != NULL)
         parentAttributes = parentObject->publicArea.objectAttributes;
     if(publicArea->nameAlg == TPM_ALG_NULL)
@@ -682,6 +663,59 @@ PublicAttributesValidation(OBJECT*      parentObject,  // IN: input parent objec
            != IS_ATTRIBUTE(parentAttributes, TPMA_OBJECT, encryptedDuplication))
             return TPM_RCS_ATTRIBUTES;
     }
+    // firmwareLimited/svnLimited can only be set if fixedTPM is also set.
+    if((IS_ATTRIBUTE(attributes, TPMA_OBJECT, firmwareLimited)
+        || IS_ATTRIBUTE(attributes, TPMA_OBJECT, svnLimited))
+       && !IS_ATTRIBUTE(attributes, TPMA_OBJECT, fixedTPM))
+    {
+        return TPM_RCS_ATTRIBUTES;
+    }
+
+    // firmwareLimited/svnLimited also impose requirements on the parent key or
+    // primary handle.
+    if(IS_ATTRIBUTE(attributes, TPMA_OBJECT, firmwareLimited))
+    {
+        if(parentObject != NULL)
+        {
+            // For an ordinary object, firmwareLimited can only be set if its
+            // parent is also firmwareLimited.
+            if(!IS_ATTRIBUTE(parentAttributes, TPMA_OBJECT, firmwareLimited))
+                return TPM_RCS_ATTRIBUTES;
+        }
+        else if(primaryHierarchy != 0)
+        {
+            // For a primary object, firmwareLimited can only be set if its
+            // hierarchy is a firmware-limited hierarchy.
+            if(!HierarchyIsFirmwareLimited(primaryHierarchy))
+                return TPM_RCS_ATTRIBUTES;
+        }
+        else
+        {
+            return TPM_RCS_ATTRIBUTES;
+        }
+    }
+    if(IS_ATTRIBUTE(attributes, TPMA_OBJECT, svnLimited))
+    {
+        if(parentObject != NULL)
+        {
+            // For an ordinary object, svnLimited can only be set if its
+            // parent is also svnLimited.
+            if(!IS_ATTRIBUTE(parentAttributes, TPMA_OBJECT, svnLimited))
+                return TPM_RCS_ATTRIBUTES;
+        }
+        else if(primaryHierarchy != 0)
+        {
+            // For a primary object, svnLimited can only be set if its
+            // hierarchy is an svn-limited hierarchy.
+            if(!HierarchyIsSvnLimited(primaryHierarchy))
+                return TPM_RCS_ATTRIBUTES;
+        }
+        else
+        {
+            return TPM_RCS_ATTRIBUTES;
+        }
+    }
+
     // Special checks for derived objects
     if((parentObject != NULL) && (parentObject->attributes.derivation == SET))
     {

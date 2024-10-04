@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes
 #include "Tpm.h"
 #include "TpmASN1.h"
@@ -48,6 +14,8 @@
 #if ALG_SM2
 //#   include "X509_SM2_fp.h"
 #endif  // ALG_RSA
+
+#if CC_CertifyX509
 
 //** Unmarshaling Functions
 
@@ -77,10 +45,10 @@ BOOL X509FindExtensionByOID(ASN1UnmarshalContext* ctxIn,  // IN: the context to 
     // Now, search in the extension context
     for(; ctx->size > ctx->offset; ctx->offset += length)
     {
-        VERIFY((length = ASN1NextTag(ctx)) >= 0);
+        GOTO_ERROR_UNLESS((length = ASN1NextTag(ctx)) >= 0);
         // If this is not a constructed sequence, then it doesn't belong
         // in the extensions.
-        VERIFY(ctx->tag == ASN1_CONSTRUCTED_SEQUENCE);
+        GOTO_ERROR_UNLESS(ctx->tag == ASN1_CONSTRUCTED_SEQUENCE);
         // Make sure that this entry could hold the OID
         if(length >= OID_SIZE(OID))
         {
@@ -96,7 +64,7 @@ BOOL X509FindExtensionByOID(ASN1UnmarshalContext* ctxIn,  // IN: the context to 
             }
         }
     }
-    VERIFY(ctx->offset == ctx->size);
+    GOTO_ERROR_UNLESS(ctx->offset == ctx->size);
     return FALSE;
 Error:
     ctxIn->size = -1;
@@ -134,7 +102,7 @@ X509GetExtensionBits(ASN1UnmarshalContext* ctx, UINT32* value)
 // Return Type: TPM_RC
 //      TPM_RCS_ATTRIBUTES      the attributes of object are not consistent with
 //                              the extension setting
-//      TPM_RCS_VALUE           problem parsing the extensions
+//      TPM_RC_VALUE            problem parsing the extensions
 TPM_RC
 X509ProcessExtensions(
     OBJECT* object,       // IN: The object with the attributes to
@@ -181,6 +149,11 @@ X509ProcessExtensions(
 
         //
         keyUsage.integer = value;
+
+        // see if any reserved bits are set
+        if(keyUsage.integer & ~(TPMA_X509_KEY_USAGE_ALLOWED_BITS))
+            return TPM_RCS_RESERVED_BITS;
+
         // For KeyUsage:
         // 1) 'sign' is SET if Key Usage includes signing
         badSign = ((KEY_USAGE_SIGN.integer & keyUsage.integer) != 0)
@@ -191,9 +164,10 @@ X509ProcessExtensions(
         // 3) 'fixedTPM' is SET if Key Usage is non-repudiation
         badFixedTPM = IS_ATTRIBUTE(keyUsage.x509, TPMA_X509_KEY_USAGE, nonrepudiation)
                       && !IS_ATTRIBUTE(attributes, TPMA_OBJECT, fixedTPM);
-        // 4)'restricted' is SET if Key Usage is for key agreement.
-        badRestricted = IS_ATTRIBUTE(keyUsage.x509, TPMA_X509_KEY_USAGE, keyAgreement)
-                        && !IS_ATTRIBUTE(attributes, TPMA_OBJECT, restricted);
+        // 4)'restricted' is SET if Key Usage is for key encipherment.
+        badRestricted =
+            IS_ATTRIBUTE(keyUsage.x509, TPMA_X509_KEY_USAGE, keyEncipherment)
+            && !IS_ATTRIBUTE(attributes, TPMA_OBJECT, restricted);
         if(badSign || badDecrypt || badFixedTPM || badRestricted)
             return TPM_RCS_VALUE;
     }
@@ -217,19 +191,19 @@ X509AddSigningAlgorithm(
 {
     switch(signKey->publicArea.type)
     {
-#if ALG_RSA
+#  if ALG_RSA
         case TPM_ALG_RSA:
             return X509AddSigningAlgorithmRSA(signKey, scheme, ctx);
-#endif  // ALG_RSA
-#if ALG_ECC
+#  endif  // ALG_RSA
+#  if ALG_ECC
         case TPM_ALG_ECC:
             return X509AddSigningAlgorithmECC(signKey, scheme, ctx);
-#endif  // ALG_ECC
-#if ALG_SM2
+#  endif  // ALG_ECC
+#  if ALG_SM2
         case TPM_ALG_SM2:
             break;  // no signing algorithm for SM2 yet
 //            return X509AddSigningAlgorithmSM2(signKey, scheme, ctx);
-#endif  // ALG_SM2
+#  endif  // ALG_SM2
         default:
             break;
     }
@@ -248,18 +222,18 @@ X509AddPublicKey(ASN1MarshalContext* ctx, OBJECT* object)
 {
     switch(object->publicArea.type)
     {
-#if ALG_RSA
+#  if ALG_RSA
         case TPM_ALG_RSA:
             return X509AddPublicRSA(object, ctx);
-#endif
-#if ALG_ECC
+#  endif
+#  if ALG_ECC
         case TPM_ALG_ECC:
             return X509AddPublicECC(object, ctx);
-#endif
-#if ALG_SM2
+#  endif
+#  if ALG_SM2
         case TPM_ALG_SM2:
             break;
-#endif
+#  endif
         default:
             break;
     }
@@ -283,3 +257,5 @@ X509PushAlgorithmIdentifierSequence(ASN1MarshalContext* ctx, const BYTE* OID)
     ASN1PushOID(ctx, OID);
     return ASN1EndEncapsulation(ctx, ASN1_CONSTRUCTED_SEQUENCE);
 }
+
+#endif  // CC_CertifyX509

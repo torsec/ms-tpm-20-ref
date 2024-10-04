@@ -1,41 +1,6 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes, Defines, and Types
 #define TPM_FAIL_C
 #include "Tpm.h"
-#include <assert.h>
 
 // On MS C compiler, can save the alignment state and set the alignment to 1 for
 // the duration of the TpmTypes.h include.  This will avoid a lot of alignment
@@ -153,42 +118,13 @@ static BOOL Unmarshal16(UINT16* target, BYTE** buffer, INT32* size)
 
 //*** SetForceFailureMode()
 // This function is called by the simulator to enable failure mode testing.
-#if SIMULATION
+#if ALLOW_FORCE_FAILURE_MODE
 LIB_EXPORT void SetForceFailureMode(void)
 {
     g_forceFailureMode = TRUE;
     return;
 }
-#endif
-
-//*** TpmLogFailure()
-// This function saves the failure values when the code will continue to operate. It
-// if similar to TpmFail() but returns to the caller. The assumption is that the
-// caller will propagate a failure back up the stack.
-void TpmLogFailure(
-#if FAIL_TRACE
-    const char* function,
-    int         line,
-#endif
-    int code)
-{
-    // Save the values that indicate where the error occurred.
-    // On a 64-bit machine, this may truncate the address of the string
-    // of the function name where the error occurred.
-#if FAIL_TRACE
-    s_failFunction = (UINT32)(ptrdiff_t)function;
-    s_failLine     = line;
-#else
-    s_failFunction = 0;
-    s_failLine     = 0;
-#endif
-    s_failCode = code;
-
-    // We are in failure mode
-    g_inFailureMode = TRUE;
-
-    return;
-}
+#endif  // ALLOW_FORCE_FAILURE_MODE
 
 //*** TpmFail()
 // This function is called by TPM.lib when a failure occurs. It will set up the
@@ -197,44 +133,46 @@ NORETURN void TpmFail(
 #if FAIL_TRACE
     const char* function,
     int         line,
+#else
+    uint64_t locationCode,
 #endif
-    int code)
+    int failureCode)
 {
     // Save the values that indicate where the error occurred.
     // On a 64-bit machine, this may truncate the address of the string
     // of the function name where the error occurred.
 #if FAIL_TRACE
-    s_failFunction = (UINT32)(ptrdiff_t)function;
-    s_failLine     = line;
+    s_failFunctionName = function;
+    s_failFunction     = (UINT32)(ptrdiff_t)function;
+    s_failLine         = line;
 #else
-    s_failFunction = (UINT32)(ptrdiff_t)NULL;
-    s_failLine     = 0;
+    s_failFunction = (UINT32)(locationCode >> 32);
+    s_failLine     = (UINT32)(locationCode);
 #endif
-    s_failCode = code;
+    s_failCode = failureCode;
 
     // We are in failure mode
     g_inFailureMode = TRUE;
 
-    // if asserts are enabled, then do an assert unless the failure mode code
-    // is being tested.
-#if SIMULATION
-#  ifndef NDEBUG
-    assert(g_forceFailureMode);
-#  endif
-    // Clear this flag
-    g_forceFailureMode = FALSE;
-#endif
-    // Jump to the failure mode code.
-    // Note: only get here if asserts are off or if we are testing failure mode
+    // Notify the platform that we hit a failure.
+    //
+    // In the LONGJMP case, the reference platform code is expected to long-jmp
+    // back to the ExecuteCommand call and output a failure response.
+    //
+    // In the NO_LONGJMP case, this is a notification to the platform, and the
+    // platform may take any (implementation-defined) behavior, including no-op,
+    // debugging, or whatever. The core library is expected to surface the failure
+    // back to ExecuteCommand through error propagation and return an appropriate
+    // failure reply.
     _plat__Fail();
 }
 
 //*** TpmFailureMode(
 // This function is called by the interface code when the platform is in failure
 // mode.
-void TpmFailureMode(unsigned int    inRequestSize,    // IN: command buffer size
+void TpmFailureMode(uint32_t        inRequestSize,    // IN: command buffer size
                     unsigned char*  inRequest,        // IN: command buffer
-                    unsigned int*   outResponseSize,  // OUT: response buffer size
+                    uint32_t*       outResponseSize,  // OUT: response buffer size
                     unsigned char** outResponse       // OUT: response buffer
 )
 {
@@ -283,18 +221,7 @@ void TpmFailureMode(unsigned int    inRequestSize,    // IN: command buffer size
                || !Unmarshal32(&pt, &buffer, &size)
                || !Unmarshal32(&count, &buffer, &size))
                 goto FailureModeReturn;
-            // If in failure mode because of an unrecoverable read error, and the
-            // property is 0 and the count is 0, then this is an indication to
-            // re-manufacture the TPM. Do the re-manufacture but stay in failure
-            // mode until the TPM is reset.
-            // Note: this behavior is not required by the specification and it is
-            // OK to leave the TPM permanently bricked due to an unrecoverable NV
-            // error.
-            if(count == 0 && pt == 0 && s_failCode == FATAL_ERROR_NV_UNRECOVERABLE)
-            {
-                g_manufactured = FALSE;
-                TPM_Manufacture(0);
-            }
+
             if(count > 0)
                 count = 1;
             else if(pt > TPM_PT_FIRMWARE_VERSION_2)
@@ -323,66 +250,45 @@ void TpmFailureMode(unsigned int    inRequestSize,    // IN: command buffer size
                 {
                     case TPM_PT_MANUFACTURER:
                         // the vendor ID unique to each TPM manufacturer
-#ifdef MANUFACTURER
-                        pt = *(UINT32*)MANUFACTURER;
-#else
-                        pt = 0;
-#endif
+                        pt = _plat__GetManufacturerCapabilityCode();
                         break;
+
                     case TPM_PT_VENDOR_STRING_1:
                         // the first four characters of the vendor ID string
-#ifdef VENDOR_STRING_1
-                        pt = *(UINT32*)VENDOR_STRING_1;
-#else
-                        pt = 0;
-#endif
+                        pt = _plat__GetVendorCapabilityCode(1);
                         break;
+
                     case TPM_PT_VENDOR_STRING_2:
                         // the second four characters of the vendor ID string
-#ifdef VENDOR_STRING_2
-                        pt = *(UINT32*)VENDOR_STRING_2;
-#else
-                        pt = 0;
-#endif
+                        pt = _plat__GetVendorCapabilityCode(2);
                         break;
+
                     case TPM_PT_VENDOR_STRING_3:
                         // the third four characters of the vendor ID string
-#ifdef VENDOR_STRING_3
-                        pt = *(UINT32*)VENDOR_STRING_3;
-#else
-                        pt = 0;
-#endif
+                        pt = _plat__GetVendorCapabilityCode(3);
                         break;
+
                     case TPM_PT_VENDOR_STRING_4:
                         // the fourth four characters of the vendor ID string
-#ifdef VENDOR_STRING_4
-                        pt = *(UINT32*)VENDOR_STRING_4;
-#else
-                        pt = 0;
-#endif
+                        pt = _plat__GetVendorCapabilityCode(4);
                         break;
+
                     case TPM_PT_VENDOR_TPM_TYPE:
                         // vendor-defined value indicating the TPM model
                         // We just make up a number here
-                        pt = 1;
+                        pt = _plat__GetTpmType();
                         break;
+
                     case TPM_PT_FIRMWARE_VERSION_1:
                         // the more significant 32-bits of a vendor-specific value
                         // indicating the version of the firmware
-#ifdef FIRMWARE_V1
-                        pt = FIRMWARE_V1;
-#else
-                        pt = 0;
-#endif
+                        pt = _plat__GetTpmFirmwareVersionHigh();
                         break;
+
                     default:  // TPM_PT_FIRMWARE_VERSION_2:
                         // the less significant 32-bits of a vendor-specific value
                         // indicating the version of the firmware
-#ifdef FIRMWARE_V2
-                        pt = FIRMWARE_V2;
-#else
-                        pt = 0;
-#endif
+                        pt = _plat__GetTpmFirmwareVersionLow();
                         break;
                 }
             marshalSize += MarshalUint32(pt, &buffer);

@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 #include "Tpm.h"
 
 // This table is the product of all of the primes up to 1000.
@@ -39,7 +5,7 @@
 // and this number will eliminate many prime candidates from
 // consideration before running Miller-Rabin on the result.
 
-const BN_STRUCT(43 * RADIX_BITS) s_CompositeOfSmallPrimes_ =
+const CRYPT_INT_BUF(smallprimecomp, 43 * RADIX_BITS) s_CompositeOfSmallPrimes_ =
     {44, 44, {0x2ED42696, 0x2BBFA177, 0x4820594F, 0xF73F4841, 0xBFAC313A, 0xCAC3EB81,
               0xF6F26BF8, 0x7FAB5061, 0x59746FB7, 0xF71377F6, 0x3B19855B, 0xCBD03132,
               0xBB92EF1B, 0x3AC3152C, 0xE87C8273, 0xC0AE0E69, 0x74A9E295, 0x448CCE86,
@@ -49,7 +15,8 @@ const BN_STRUCT(43 * RADIX_BITS) s_CompositeOfSmallPrimes_ =
               0x96658ED2, 0x1753EFE5, 0x3AE4A5A6, 0x8FD4A97F, 0x8B15E7EB, 0x0243C3E1,
               0xE0F0C31D, 0x0000000B}};
 
-bigConst s_CompositeOfSmallPrimes = (const bigNum)&s_CompositeOfSmallPrimes_;
+const Crypt_Int* s_CompositeOfSmallPrimes =
+    (const Crypt_Int*)&s_CompositeOfSmallPrimes_;
 
 // This table contains a bit for each of the odd values between 1 and 2^16 + 1.
 // This table allows fast checking of the primes in that range.

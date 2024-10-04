@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes
 
 #include "Tpm.h"
@@ -57,33 +23,36 @@
     bits            the number of bits needed for a symmetric key and IV for
                     the context encryption
 */
-//  Return Type: void
-void ComputeContextProtectionKey(TPMS_CONTEXT*  contextBlob,  // IN: context blob
-                                 TPM2B_SYM_KEY* symKey,  // OUT: the symmetric key
-                                 TPM2B_IV*      iv       // OUT: the IV.
+//  Return Type: TPM_RC
+//      TPM_RC_FW_LIMITED       The requested hierarchy is FW-limited, but the TPM
+//                              does not support FW-limited objects or the TPM failed
+//                              to derive the Firmware Secret.
+//      TPM_RC_SVN_LIMITED      The requested hierarchy is SVN-limited, but the TPM
+//                              does not support SVN-limited objects or the TPM
+//                              failed to derive the Firmware SVN Secret for the
+//                              requested SVN.
+TPM_RC ComputeContextProtectionKey(TPMS_CONTEXT*  contextBlob,  // IN: context blob
+                                   TPM2B_SYM_KEY* symKey,  // OUT: the symmetric key
+                                   TPM2B_IV*      iv       // OUT: the IV.
 )
 {
-    UINT16 symKeyBits;          // number of bits in the parent's
-                                //   symmetric key
-    TPM2B_PROOF* proof = NULL;  // the proof value to use. Is null for
-                                //   everything but a primary object in
-                                //   the Endorsement Hierarchy
+    TPM_RC result = TPM_RC_SUCCESS;
+    UINT16 symKeyBits;  // number of bits in the parent's
+                        //   symmetric key
+    TPM2B_PROOF proof;  // the proof value to use
 
-    BYTE       kdfResult[sizeof(TPMU_HA) * 2];  // Value produced by the KDF
+    BYTE        kdfResult[sizeof(TPMU_HA) * 2];  // Value produced by the KDF
 
-    TPM2B_DATA sequence2B, handle2B;
-
-    // Get proof value
-    proof = HierarchyGetProof(contextBlob->hierarchy);
+    TPM2B_DATA  sequence2B, handle2B;
 
     // Get sequence value in 2B format
     sequence2B.t.size = sizeof(contextBlob->sequence);
-    cAssert(sequence2B.t.size <= sizeof(sequence2B.t.buffer));
+    MUST_BE(sizeof(contextBlob->sequence) <= sizeof(sequence2B.t.buffer));
     MemoryCopy(sequence2B.t.buffer, &contextBlob->sequence, sequence2B.t.size);
 
     // Get handle value in 2B format
     handle2B.t.size = sizeof(contextBlob->savedHandle);
-    cAssert(handle2B.t.size <= sizeof(handle2B.t.buffer));
+    MUST_BE(sizeof(contextBlob->savedHandle) <= sizeof(handle2B.t.buffer));
     MemoryCopy(handle2B.t.buffer, &contextBlob->savedHandle, handle2B.t.size);
 
     // Get the symmetric encryption key size
@@ -92,9 +61,14 @@ void ComputeContextProtectionKey(TPMS_CONTEXT*  contextBlob,  // IN: context blo
     // Get the size of the IV for the algorithm
     iv->t.size = CryptGetSymmetricBlockSize(CONTEXT_ENCRYPT_ALG, symKeyBits);
 
+    // Get proof value
+    result = HierarchyGetProof(contextBlob->hierarchy, &proof);
+    if(result != TPM_RC_SUCCESS)
+        return result;
+
     // KDFa to generate symmetric key and IV value
     CryptKDFa(CONTEXT_INTEGRITY_HASH_ALG,
-              &proof->b,
+              &proof.b,
               CONTEXT_KEY,
               &sequence2B.b,
               &handle2B.b,
@@ -102,6 +76,8 @@ void ComputeContextProtectionKey(TPMS_CONTEXT*  contextBlob,  // IN: context blo
               kdfResult,
               NULL,
               FALSE);
+
+    MemorySet(proof.b.buffer, 0, proof.b.size);
 
     // Copy part of the returned value as the key
     pAssert(symKey->t.size <= sizeof(symKey->t.buffer));
@@ -111,7 +87,7 @@ void ComputeContextProtectionKey(TPMS_CONTEXT*  contextBlob,  // IN: context blo
     pAssert(iv->t.size <= sizeof(iv->t.buffer));
     MemoryCopy(iv->t.buffer, &kdfResult[symKey->t.size], iv->t.size);
 
-    return;
+    return TPM_RC_SUCCESS;
 }
 
 //*** ComputeContextIntegrity()
@@ -137,21 +113,33 @@ void ComputeContextProtectionKey(TPMS_CONTEXT*  contextBlob,  // IN: context blo
     handle              the handle parameter of the TPMS_CONTEXT
     encContext          the encrypted context blob
 */
-//  Return Type: void
-void ComputeContextIntegrity(TPMS_CONTEXT* contextBlob,  // IN: context blob
-                             TPM2B_DIGEST* integrity     // OUT: integrity
+//  Return Type: TPM_RC
+//      TPM_RC_FW_LIMITED       The requested hierarchy is FW-limited, but the TPM
+//                              does not support FW-limited objects or the TPM failed
+//                              to derive the Firmware Secret.
+//      TPM_RC_SVN_LIMITED      The requested hierarchy is SVN-limited, but the TPM
+//                              does not support SVN-limited objects or the TPM
+//                              failed to derive the Firmware SVN Secret for the
+//                              requested SVN.
+TPM_RC ComputeContextIntegrity(TPMS_CONTEXT* contextBlob,  // IN: context blob
+                               TPM2B_DIGEST* integrity     // OUT: integrity
 )
 {
-    HMAC_STATE   hmacState;
-    TPM2B_PROOF* proof;
-    UINT16       integritySize;
+    TPM_RC      result = TPM_RC_SUCCESS;
+    HMAC_STATE  hmacState;
+    TPM2B_PROOF proof;
+    UINT16      integritySize;
 
     // Get proof value
-    proof = HierarchyGetProof(contextBlob->hierarchy);
+    result = HierarchyGetProof(contextBlob->hierarchy, &proof);
+    if(result != TPM_RC_SUCCESS)
+        return result;
 
     // Start HMAC
     integrity->t.size =
-        CryptHmacStart2B(&hmacState, CONTEXT_INTEGRITY_HASH_ALG, &proof->b);
+        CryptHmacStart2B(&hmacState, CONTEXT_INTEGRITY_HASH_ALG, &proof.b);
+
+    MemorySet(proof.b.buffer, 0, proof.b.size);
 
     // Compute integrity size at the beginning of context blob
     integritySize = sizeof(integrity->t.size) + integrity->t.size;
@@ -185,7 +173,7 @@ void ComputeContextIntegrity(TPMS_CONTEXT* contextBlob,  // IN: context blob
     // Complete HMAC
     CryptHmacEnd2B(&hmacState, &integrity->b);
 
-    return;
+    return TPM_RC_SUCCESS;
 }
 
 //*** SequenceDataExport();

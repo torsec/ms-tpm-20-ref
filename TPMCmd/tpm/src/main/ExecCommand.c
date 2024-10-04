@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Introduction
 //
 // This file contains the entry function ExecuteCommand() which provides the main
@@ -41,7 +7,8 @@
 
 #include "Tpm.h"
 #include "Marshal.h"
-#include "ExecCommand_fp.h"
+// TODO_RENAME_INC_FOLDER:platform_interface refers to the TPM_CoreLib platform interface
+#include <platform_interface/prototypes/ExecCommand_fp.h>
 
 // Uncomment this next #include if doing static command/response buffer sizing
 // #include "CommandResponseSizes_fp.h"
@@ -97,19 +64,6 @@ LIB_EXPORT void ExecuteCommand(
     // Response local variables
     UINT32 maxResponse = *responseSize;
     TPM_RC result;  // return code for the command
-
-#if MAX_COMMAND_SIZE < 6 || MAX_COMMAND_SIZE > UINT_MAX - 1 \
-    || MAX_COMMAND_SIZE > INT32_MAX - 1
-#  error bad MAX_COMMAND_SIZE
-#endif
-    // Protect the unmarshaling code from obscenely long requests. The
-    // preceding #error ensures that MAX_COMMAND_SIZE + 1 fits in both an INT32
-    // (used by the unmarshaling code) and an unsigned int (the argument type
-    // of TpmFailureMode).
-    if(requestSize > MAX_COMMAND_SIZE)
-    {
-        requestSize = MAX_COMMAND_SIZE + 1;
-    }
 
     // This next function call is used in development to size the command and response
     // buffers. The values printed are the sizes of the internal structures and

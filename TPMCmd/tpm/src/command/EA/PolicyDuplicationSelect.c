@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 #include "Tpm.h"
 #include "PolicyDuplicationSelect_fp.h"
 
@@ -43,7 +9,7 @@
 */
 //  Return Type: TPM_RC
 //      TPM_RC_COMMAND_CODE   'commandCode' of 'policySession' is not empty
-//      TPM_RC_CPHASH         'cpHash' of 'policySession' is not empty
+//      TPM_RC_CPHASH         'nameHash' of 'policySession' is not empty
 TPM_RC
 TPM2_PolicyDuplicationSelect(
     PolicyDuplicationSelect_In* in  // IN: input parameter list
@@ -58,8 +24,8 @@ TPM2_PolicyDuplicationSelect(
     // Get pointer to the session structure
     session = SessionGet(in->policySession);
 
-    // cpHash in session context must be empty
-    if(session->u1.cpHash.t.size != 0)
+    // nameHash in session context must be empty
+    if(session->u1.nameHash.t.size != 0)
         return TPM_RC_CPHASH;
 
     // commandCode in session context must be empty
@@ -69,7 +35,7 @@ TPM2_PolicyDuplicationSelect(
     // Internal Data Update
 
     // Update name hash
-    session->u1.cpHash.t.size = CryptHashStart(&hashState, session->authHashAlg);
+    session->u1.nameHash.t.size = CryptHashStart(&hashState, session->authHashAlg);
 
     //  add objectName
     CryptDigestUpdate2B(&hashState, &in->objectName.b);
@@ -78,7 +44,8 @@ TPM2_PolicyDuplicationSelect(
     CryptDigestUpdate2B(&hashState, &in->newParentName.b);
 
     //  complete hash
-    CryptHashEnd2B(&hashState, &session->u1.cpHash.b);
+    CryptHashEnd2B(&hashState, &session->u1.nameHash.b);
+    session->attributes.isNameHashDefined = SET;
 
     // update policy hash
     // Old policyDigest size should be the same as the new policyDigest size since

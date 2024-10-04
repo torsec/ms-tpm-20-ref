@@ -1,43 +1,11 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes
 #include "Tpm.h"
 #define _OIDS_
 #include "OIDs.h"
 #include "TpmASN1.h"
 #include "TpmASN1_fp.h"
+
+#if CC_CertifyX509
 
 //** Unmarshaling Functions
 
@@ -49,8 +17,8 @@
 BOOL ASN1UnmarshalContextInitialize(
     ASN1UnmarshalContext* ctx, INT16 size, BYTE* buffer)
 {
-    VERIFY(buffer != NULL);
-    VERIFY(size > 0);
+    GOTO_ERROR_UNLESS(buffer != NULL);
+    GOTO_ERROR_UNLESS(size > 0);
     ctx->buffer = buffer;
     ctx->size   = size;
     ctx->offset = 0;
@@ -71,7 +39,7 @@ ASN1DecodeLength(ASN1UnmarshalContext* ctx)
     BYTE  first;  // Next octet in buffer
     INT16 value;
     //
-    VERIFY(ctx->offset < ctx->size);
+    GOTO_ERROR_UNLESS(ctx->offset < ctx->size);
     first = NEXT_OCTET(ctx);
     // If the number of octets of the entity is larger than 127, then the first octet
     // is the number of octets in the length specifier.
@@ -86,7 +54,7 @@ ASN1DecodeLength(ASN1UnmarshalContext* ctx)
             // get the next value
             value = (INT16)NEXT_OCTET(ctx);
             // Make sure that the result will fit in an INT16
-            VERIFY(value < 0x0080);
+            GOTO_ERROR_UNLESS(value < 0x0080);
             // Shift up and add next octet
             value = (value << 8) + NEXT_OCTET(ctx);
         }
@@ -118,11 +86,11 @@ INT16
 ASN1NextTag(ASN1UnmarshalContext* ctx)
 {
     // A tag to get?
-    VERIFY(ctx->offset < ctx->size);
+    GOTO_ERROR_UNLESS(ctx->offset < ctx->size);
     // Get it
     ctx->tag = NEXT_OCTET(ctx);
     // Make sure that it is not an extended tag
-    VERIFY((ctx->tag & 0x1F) != 0x1F);
+    GOTO_ERROR_UNLESS((ctx->tag & 0x1F) != 0x1F);
     // Get the length field and return that
     return ASN1DecodeLength(ctx);
 
@@ -149,21 +117,21 @@ BOOL ASN1GetBitStringValue(ASN1UnmarshalContext* ctx, UINT32* val)
     int    inputBits;
     //
     length = ASN1NextTag(ctx);
-    VERIFY(length >= 1);
-    VERIFY(ctx->tag == ASN1_BITSTRING);
+    GOTO_ERROR_UNLESS(length >= 1);
+    GOTO_ERROR_UNLESS(ctx->tag == ASN1_BITSTRING);
     // Get the shift value for the bit field (how many bits to lop off of the end)
     shift = NEXT_OCTET(ctx);
     length--;
     // Get the number of bits in the input
     inputBits = (8 * length) - shift;
     // the shift count has to make sense
-    VERIFY((shift < 8) && ((length > 0) || (shift == 0)));
+    GOTO_ERROR_UNLESS((shift < 8) && ((length > 0) || (shift == 0)));
     // if there are any bytes left
     for(; length > 1; length--)
     {
 
         // for all but the last octet, just shift and add the new octet
-        VERIFY((value & 0xFF000000) == 0);  // can't loose significant bits
+        GOTO_ERROR_UNLESS((value & 0xFF000000) == 0);  // can't loose significant bits
         value = (value << 8) + NEXT_OCTET(ctx);
     }
     if(length == 1)
@@ -171,7 +139,7 @@ BOOL ASN1GetBitStringValue(ASN1UnmarshalContext* ctx, UINT32* val)
         // for the last octet, just shift the accumulated value enough to
         // accept the significant bits in the last octet and shift the last
         // octet down
-        VERIFY(((value & (0xFF000000 << (8 - shift)))) == 0);
+        GOTO_ERROR_UNLESS(((value & (0xFF000000 << (8 - shift)))) == 0);
         value = (value << (8 - shift)) + (NEXT_OCTET(ctx) >> shift);
     }
     // 'Left justify' the result
@@ -265,10 +233,6 @@ ASN1EndMarshalContext(ASN1MarshalContext* ctx)
     pAssert(ctx->depth >= 0);
     length   = ctx->end - ctx->offset;
     ctx->end = ctx->ends[ctx->depth--];
-    if((ctx->depth == -1) && (ctx->buffer))
-    {
-        MemoryCopy(ctx->buffer, ctx->buffer + ctx->offset, ctx->end - ctx->offset);
-    }
     return length;
 }
 
@@ -314,11 +278,11 @@ ASN1PushBytes(ASN1MarshalContext* ctx, INT16 count, const BYTE* buffer)
 {
     // make sure that count is not negative which would mess up the math; and that
     // if there is a count, there is a buffer
-    VERIFY((count >= 0) && ((buffer != NULL) || (count == 0)));
+    GOTO_ERROR_UNLESS((count >= 0) && ((buffer != NULL) || (count == 0)));
     // back up the offset to determine where the new octets will get pushed
     ctx->offset -= count;
     // can't go negative
-    VERIFY(ctx->offset >= 0);
+    GOTO_ERROR_UNLESS(ctx->offset >= 0);
     // if there are buffers, move the data, otherwise, assume that this is just a
     // test.
     if(count && buffer && ctx->buffer)
@@ -350,7 +314,7 @@ INT16
 ASN1PushLength(ASN1MarshalContext* ctx, INT16 len)
 {
     UINT16 start = ctx->offset;
-    VERIFY(len >= 0);
+    GOTO_ERROR_UNLESS(len >= 0);
     if(len <= 127)
         ASN1PushByte(ctx, (BYTE)len);
     else
@@ -435,7 +399,7 @@ ASN1PushInteger(ASN1MarshalContext* ctx,     // IN/OUT: buffer context
     // if needed, add a leading byte of 0 to make the number positive
     if(*integer & 0x80)
         iLen += (INT16)ASN1PushByte(ctx, 0);
-    // PushTagAndLength just tells how many octets it added so the total size of this
+    // PushTagAndLenght just tells how many octets it added so the total size of this
     // element is the sum of those octets and the adjusted input size.
     iLen += ASN1PushTagAndLength(ctx, ASN1_INTEGER, iLen);
     return iLen;
@@ -458,3 +422,5 @@ ASN1PushOID(ASN1MarshalContext* ctx, const BYTE* OID)
     ctx->offset = -1;
     return 0;
 }
+
+#endif  // CC_CertifyX509

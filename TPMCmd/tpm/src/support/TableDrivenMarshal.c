@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 
 #include <assert.h>
 
@@ -53,7 +19,7 @@ typedef struct
 extern struct Exernal_Structure_t MarshalData;
 
 #  define IS_SUCCESS(UNMARSHAL_FUNCTION) \
-    (TPM_RC_SUCCESS == (result = (UNMARSHAL_FUNCTION)))
+      (TPM_RC_SUCCESS == (result = (UNMARSHAL_FUNCTION)))
 
 marshalIndex_t IntegerDispatch[] = {UINT8_MARSHAL_REF,
                                     UINT16_MARSHAL_REF,
@@ -66,7 +32,7 @@ marshalIndex_t IntegerDispatch[] = {UINT8_MARSHAL_REF,
 
 #  if 1
 #    define GetDescriptor(reference) \
-      ((MarshalHeader_mst*)(((BYTE*)(&MarshalData)) + (reference & NULL_MASK)))
+        ((MarshalHeader_mst*)(((BYTE*)(&MarshalData)) + (reference & NULL_MASK)))
 #  else
 static const MarshalHeader_mst* GetDescriptor(marshalIndex_t index)
 {
@@ -77,7 +43,7 @@ static const MarshalHeader_mst* GetDescriptor(marshalIndex_t index)
 
 #  define GetUnionDescriptor(_index_) ((UnionMarshal_mst*)GetDescriptor(_index_))
 #  define GetArrayDescriptor(_index_) \
-    ((ArrayMarshal_mst*))(ArrayLookupTable[_index_ & NULL_MASK])
+      ((ArrayMarshal_mst*))(ArrayLookupTable[_index_ & NULL_MASK])
 
 //*** GetUnmarshaledInteger()
 // Gets the unmarshaled value and normalizes it to a UIN32 for other
@@ -363,7 +329,7 @@ Unmarshal(UINT16  typeIndex,  // IN: the thing to marshal
                 const UINT32*      check = vmt->values;
                 //
                 // if the TAKES_NULL flag is set, then the first entry in the values
-                // list is the NULL value. Iy is not included in the 'ranges' or
+                // list is the NULL value. It is not included in the 'ranges' or
                 // 'singles' count.
                 if((vmt->modifiers & TAKES_NULL) && (val == *check++))
                 {
@@ -734,8 +700,8 @@ UINT16 Marshal(UINT16  typeIndex,  // IN: the thing to marshal
 #    define MM32 0
 #    define MM64 0
 #  else
-// These flip the constant index values so that they count in reverse order when doing
-// little-endian stuff
+            // These flip the constant index values so that they count in reverse order when doing
+            // little-endian stuff
 #    define MM16 1
 #    define MM32 3
 #    define MM64 7

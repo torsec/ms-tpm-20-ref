@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 // The functions in this file are used for accessing properties for handles of
 // various types. Functions in other files require handles of a specific
@@ -67,25 +33,14 @@ EntityGetLoadStatus(COMMAND* command  // IN/OUT: command parsing structure
             case TPM_HT_PERMANENT:
                 switch(handle)
                 {
-                    case TPM_RH_OWNER:
-                        if(!gc.shEnable)
-                            result = TPM_RC_HIERARCHY;
-                        break;
-
-#ifdef VENDOR_PERMANENT
-                    case VENDOR_PERMANENT:
-#endif
-                    case TPM_RH_ENDORSEMENT:
+                    // First handle non-hierarchy cases
+#if VENDOR_PERMANENT_AUTH_ENABLED == YES
+                    case VENDOR_PERMANENT_AUTH_HANDLE:
                         if(!gc.ehEnable)
                             result = TPM_RC_HIERARCHY;
                         break;
-                    case TPM_RH_PLATFORM:
-                        if(!g_phEnable)
-                            result = TPM_RC_HIERARCHY;
-                        break;
-                        // null handle, PW session handle and lockout
-                        // handle are always available
-                    case TPM_RH_NULL:
+#endif
+                        // PW session handle and lockout handle are always available
                     case TPM_RS_PW:
                         // Need to be careful for lockout. Lockout is always available
                         // for policy checks but not always available when authValue
@@ -107,9 +62,8 @@ EntityGetLoadStatus(COMMAND* command  // IN/OUT: command parsing structure
                             // if the implementation has a manufacturer-specific value
                             result = TPM_RC_VALUE;
                         else
-                            // The handle is in the range of reserved handles but is
-                            // not implemented in this TPM.
-                            result = TPM_RC_VALUE;
+                            // The handle either refers to a hierarchy or is invalid.
+                            result = ValidateHierarchy(handle);
                         break;
                 }
                 break;
@@ -172,6 +126,11 @@ EntityGetLoadStatus(COMMAND* command  // IN/OUT: command parsing structure
                 result = AcIsAccessible(handle);
                 break;
 #endif
+            case TPM_HT_EXTERNAL_NV:
+            case TPM_HT_PERMANENT_NV:
+                // Not yet supported.
+                result = TPM_RC_VALUE;
+                break;
             default:
                 // Any other handle type is a defect in the unmarshaling code.
                 FAIL(FATAL_ERROR_INTERNAL);
@@ -212,7 +171,7 @@ EntityGetAuthValue(TPMI_DH_ENTITY handle,  // IN: handle of entity
     {
         case TPM_HT_PERMANENT:
         {
-            switch(handle)
+            switch(HierarchyNormalizeHandle(handle))
             {
                 case TPM_RH_OWNER:
                     // ownerAuth for TPM_RH_OWNER
@@ -222,8 +181,10 @@ EntityGetAuthValue(TPMI_DH_ENTITY handle,  // IN: handle of entity
                     // endorsementAuth for TPM_RH_ENDORSEMENT
                     pAuth = &gp.endorsementAuth;
                     break;
+
                     // The ACT use platformAuth for auth
                     FOR_EACH_ACT(CASE_ACT_HANDLE)
+
                 case TPM_RH_PLATFORM:
                     // platformAuth for TPM_RH_PLATFORM
                     pAuth = &gc.platformAuth;
@@ -236,10 +197,10 @@ EntityGetAuthValue(TPMI_DH_ENTITY handle,  // IN: handle of entity
                     // nullAuth for TPM_RH_NULL. Return 0 directly here
                     return 0;
                     break;
-#ifdef VENDOR_PERMANENT
-                case VENDOR_PERMANENT:
+#if VENDOR_PERMANENT_AUTH_ENABLED == YES
+                case VENDOR_PERMANENT_AUTH_HANDLE:
                     // vendor authorization value
-                    pAuth = &g_platformUniqueDetails;
+                    pAuth = &g_platformUniqueAuth;
 #endif
                 default:
                     // If any other permanent handle is present it is
@@ -317,7 +278,7 @@ EntityGetAuthPolicy(TPMI_DH_ENTITY handle,     // IN: handle of entity
     switch(HandleGetType(handle))
     {
         case TPM_HT_PERMANENT:
-            switch(handle)
+            switch(HierarchyNormalizeHandle(handle))
             {
                 case TPM_RH_OWNER:
                     // ownerPolicy for TPM_RH_OWNER
@@ -339,11 +300,11 @@ EntityGetAuthPolicy(TPMI_DH_ENTITY handle,     // IN: handle of entity
                     *authPolicy = gp.lockoutPolicy;
                     hashAlg     = gp.lockoutAlg;
                     break;
-#define ACT_GET_POLICY(N)                \
-  case TPM_RH_ACT_##N:                   \
-    *authPolicy = go.ACT_##N.authPolicy; \
-    hashAlg     = go.ACT_##N.hashAlg;    \
-    break;
+#define ACT_GET_POLICY(N)                    \
+    case TPM_RH_ACT_##N:                     \
+        *authPolicy = go.ACT_##N.authPolicy; \
+        hashAlg     = go.ACT_##N.hashAlg;    \
+        break;
                     // Get the policy for each implemented ACT
                     FOR_EACH_ACT(ACT_GET_POLICY)
                 default:
@@ -428,6 +389,13 @@ EntityGetHierarchy(TPMI_DH_ENTITY handle  // IN :handle of entity
     {
         case TPM_HT_PERMANENT:
             // hierarchy for a permanent handle
+
+            if(HierarchyIsFirmwareLimited(handle) || HierarchyIsSvnLimited(handle))
+            {
+                hierarchy = handle;
+                break;
+            }
+
             switch(handle)
             {
                 case TPM_RH_PLATFORM:

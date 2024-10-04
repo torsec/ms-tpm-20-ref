@@ -1,41 +1,9 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Includes
 #include "Platform.h"
 
 //** Functions
+
+#if ACT_SUPPORT
 
 //*** ActSignal()
 // Function called when there is an ACT event to signal or unsignal
@@ -54,71 +22,71 @@ static void ActSignal(P_ACT_DATA actData, int on)
     // It should test 'on' to see if it is turning the signal on or off.
     switch(actData->number)
     {
-#if RH_ACT_0
+#  if RH_ACT_0
         case 0:  // Do something
             return;
-#endif
-#if RH_ACT_1
+#  endif
+#  if RH_ACT_1
         case 1:  // Do something
             return;
-#endif
-#if RH_ACT_2
+#  endif
+#  if RH_ACT_2
         case 2:  // Do something
             return;
-#endif
-#if RH_ACT_3
+#  endif
+#  if RH_ACT_3
         case 3:  // Do something
             return;
-#endif
-#if RH_ACT_4
+#  endif
+#  if RH_ACT_4
         case 4:  // Do something
             return;
-#endif
-#if RH_ACT_5
+#  endif
+#  if RH_ACT_5
         case 5:  // Do something
             return;
-#endif
-#if RH_ACT_6
+#  endif
+#  if RH_ACT_6
         case 6:  // Do something
             return;
-#endif
-#if RH_ACT_7
+#  endif
+#  if RH_ACT_7
         case 7:  // Do something
             return;
-#endif
-#if RH_ACT_8
+#  endif
+#  if RH_ACT_8
         case 8:  // Do something
             return;
-#endif
-#if RH_ACT_9
+#  endif
+#  if RH_ACT_9
         case 9:  // Do something
             return;
-#endif
-#if RH_ACT_A
+#  endif
+#  if RH_ACT_A
         case 0xA:  // Do something
             return;
-#endif
-#if RH_ACT_B
+#  endif
+#  if RH_ACT_B
         case 0xB:
             // Do something
             return;
-#endif
-#if RH_ACT_C
+#  endif
+#  if RH_ACT_C
         case 0xC:  // Do something
             return;
-#endif
-#if RH_ACT_D
+#  endif
+#  if RH_ACT_D
         case 0xD:  // Do something
             return;
-#endif
-#if RH_ACT_E
+#  endif
+#  if RH_ACT_E
         case 0xE:  // Do something
             return;
-#endif
-#if RH_ACT_F
+#  endif
+#  if RH_ACT_F
         case 0xF:  // Do something
             return;
-#endif
+#  endif
         default:
             return;
     }
@@ -128,9 +96,9 @@ static void ActSignal(P_ACT_DATA actData, int on)
 static P_ACT_DATA ActGetDataPointer(uint32_t act)
 {
 
-#define RETURN_ACT_POINTER(N) \
-  if(0x##N == act)            \
-    return &ACT_##N;
+#  define RETURN_ACT_POINTER(N) \
+      if(0x##N == act)          \
+          return &ACT_##N;
 
     FOR_EACH_ACT(RETURN_ACT_POINTER)
 
@@ -273,7 +241,7 @@ LIB_EXPORT void _plat__ACT_Tick(void)
     if(actTicksAllowed)
     {
         // Handle the update for each counter.
-#define DECREMENT_COUNT(N) ActDecrement(&ACT_##N);
+#  define DECREMENT_COUNT(N) ActDecrement(&ACT_##N);
 
         FOR_EACH_ACT(DECREMENT_COUNT)
     }
@@ -295,8 +263,10 @@ static void ActZero(uint32_t act, P_ACT_DATA actData)
 LIB_EXPORT int _plat__ACT_Initialize(void)
 {
     actTicksAllowed = 0;
-#define ZERO_ACT(N) ActZero(0x##N, &ACT_##N);
+#  define ZERO_ACT(N) ActZero(0x##N, &ACT_##N);
     FOR_EACH_ACT(ZERO_ACT)
 
     return TRUE;
 }
+
+#endif  // ACT_SUPPORT

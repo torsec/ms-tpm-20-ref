@@ -247,7 +247,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\TpmConfiguration\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -284,7 +284,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WolfDebug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -322,7 +322,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -349,7 +349,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -374,7 +374,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WolfDebug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -397,7 +397,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -429,7 +429,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
     </ClCompile>
@@ -450,7 +450,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
     </ClCompile>
@@ -472,7 +472,7 @@
       </PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
     </ClCompile>
@@ -493,7 +493,7 @@
       </PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include;$(SolutionDir)\tpm\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)\include;$(ProjectDir)\include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)\tpm\include\public\include;$(SolutionDir)\TpmConfiguration\include\</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
     </ClCompile>

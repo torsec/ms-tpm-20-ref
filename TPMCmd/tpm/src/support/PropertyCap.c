@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 // This file contains the functions that are used for accessing the
 // TPM_CAP_TPM_PROPERTY values.
@@ -79,42 +45,38 @@ static BOOL TPMPropertyIsDefined(TPM_PT  property,  // IN: property
             // from the title page of the specification
             *value = TPM_SPEC_YEAR;
             break;
+
         case TPM_PT_MANUFACTURER:
-            // vendor ID unique to each TPM manufacturer
-            *value = BYTE_ARRAY_TO_UINT32(MANUFACTURER);
+            // the vendor ID unique to each TPM manufacturer
+            *value = _plat__GetManufacturerCapabilityCode();
             break;
+
         case TPM_PT_VENDOR_STRING_1:
-            // first four characters of the vendor ID string
-            *value = BYTE_ARRAY_TO_UINT32(VENDOR_STRING_1);
+            // the first four characters of the vendor ID string
+            *value = _plat__GetVendorCapabilityCode(1);
             break;
+
         case TPM_PT_VENDOR_STRING_2:
-            // second four characters of the vendor ID string
-#ifdef VENDOR_STRING_2
-            *value = BYTE_ARRAY_TO_UINT32(VENDOR_STRING_2);
-#else
-            *value = 0;
-#endif
+            // the second four characters of the vendor ID string
+            *value = _plat__GetVendorCapabilityCode(2);
             break;
+
         case TPM_PT_VENDOR_STRING_3:
-            // third four characters of the vendor ID string
-#ifdef VENDOR_STRING_3
-            *value = BYTE_ARRAY_TO_UINT32(VENDOR_STRING_3);
-#else
-            *value = 0;
-#endif
+            // the third four characters of the vendor ID string
+            *value = _plat__GetVendorCapabilityCode(3);
             break;
+
         case TPM_PT_VENDOR_STRING_4:
-            // fourth four characters of the vendor ID string
-#ifdef VENDOR_STRING_4
-            *value = BYTE_ARRAY_TO_UINT32(VENDOR_STRING_4);
-#else
-            *value = 0;
-#endif
+            // the fourth four characters of the vendor ID string
+            *value = _plat__GetVendorCapabilityCode(4);
             break;
+
         case TPM_PT_VENDOR_TPM_TYPE:
             // vendor-defined value indicating the TPM model
-            *value = 1;
+            // We just make up a number here
+            *value = _plat__GetTpmType();
             break;
+
         case TPM_PT_FIRMWARE_VERSION_1:
             // more significant 32-bits of a vendor-specific value
             *value = gp.firmwareV1;
@@ -228,13 +190,13 @@ static BOOL TPMPropertyIsDefined(TPM_PT  property,  // IN: property
         case TPM_PT_MAX_OBJECT_CONTEXT:
 // Header has 'sequence', 'handle' and 'hierarchy'
 #define SIZE_OF_CONTEXT_HEADER \
-  sizeof(UINT64) + sizeof(TPMI_DH_CONTEXT) + sizeof(TPMI_RH_HIERARCHY)
+    sizeof(UINT64) + sizeof(TPMI_DH_CONTEXT) + sizeof(TPMI_RH_HIERARCHY)
 #define SIZE_OF_CONTEXT_INTEGRITY (sizeof(UINT16) + CONTEXT_INTEGRITY_HASH_SIZE)
 #define SIZE_OF_FINGERPRINT       sizeof(UINT64)
 #define SIZE_OF_CONTEXT_BLOB_OVERHEAD \
-  (sizeof(UINT16) + SIZE_OF_CONTEXT_INTEGRITY + SIZE_OF_FINGERPRINT)
+    (sizeof(UINT16) + SIZE_OF_CONTEXT_INTEGRITY + SIZE_OF_FINGERPRINT)
 #define SIZE_OF_CONTEXT_OVERHEAD \
-  (SIZE_OF_CONTEXT_HEADER + SIZE_OF_CONTEXT_BLOB_OVERHEAD)
+    (SIZE_OF_CONTEXT_HEADER + SIZE_OF_CONTEXT_BLOB_OVERHEAD)
 #if 0
             // maximum size of a TPMS_CONTEXT that will be returned by
             // TPM2_ContextSave for object context
@@ -361,14 +323,26 @@ static BOOL TPMPropertyIsDefined(TPM_PT  property,  // IN: property
             *value = MAX_NV_BUFFER_SIZE;
             break;
         case TPM_PT_MODES:
+        {
+            union
+            {
+                TPMA_MODES attr;
+                UINT32     u32;
+            } flags = {TPMA_ZERO_INITIALIZER()};
 #if FIPS_COMPLIANT
-            *value = 1;
-#else
-            *value = 0;
+            SET_ATTRIBUTE(flags.attr, TPMA_MODES, FIPS_140_2);
 #endif
+            *value = flags.u32;
             break;
+        }
         case TPM_PT_MAX_CAP_BUFFER:
             *value = MAX_CAP_BUFFER;
+            break;
+        case TPM_PT_FIRMWARE_SVN:
+            *value = _plat__GetTpmFirmwareSvn();
+            break;
+        case TPM_PT_FIRMWARE_MAX_SVN:
+            *value = _plat__GetTpmFirmwareMaxSvn();
             break;
 
         // Start of variable commands
@@ -593,4 +567,22 @@ TPMCapGetProperties(TPM_PT property,  // IN: the starting TPM property
         }
     }
     return more;
+}
+
+//*** TPMCapGetOneProperty()
+// This function returns a single TPM property, if present.
+BOOL TPMCapGetOneProperty(TPM_PT                pt,       // IN: the TPM property
+                          TPMS_TAGGED_PROPERTY* property  // OUT: tagged property
+)
+{
+    UINT32 value;
+
+    if(TPMPropertyIsDefined((TPM_PT)pt, &value))
+    {
+        property->property = (TPM_PT)pt;
+        property->value    = value;
+        return TRUE;
+    }
+
+    return FALSE;
 }

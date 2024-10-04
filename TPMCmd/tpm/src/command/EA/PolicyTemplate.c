@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 #include "Tpm.h"
 #include "PolicyTemplate_fp.h"
 
@@ -59,14 +25,11 @@ TPM2_PolicyTemplate(PolicyTemplate_In* in  // IN: input parameter list
     // Get pointer to the session structure
     session = SessionGet(in->policySession);
 
-    // If the template is set, make sure that it is the same as the input value
-    if(session->attributes.isTemplateSet)
-    {
-        if(!MemoryEqual2B(&in->templateHash.b, &session->u1.cpHash.b))
-            return TPM_RCS_VALUE + RC_PolicyTemplate_templateHash;
-    }
-    // error if cpHash contains something that is not a template
-    else if(session->u1.templateHash.t.size != 0)
+    // error if the templateHash in session context is not empty and is not the
+    // same as the input or is not a template
+    if((IsCpHashUnionOccupied(session->attributes))
+       && (!session->attributes.isTemplateHashDefined
+           || !MemoryEqual2B(&in->templateHash.b, &session->u1.templateHash.b)))
         return TPM_RC_CPHASH;
 
     // A valid templateHash must have the same size as session hash digest
@@ -92,9 +55,9 @@ TPM2_PolicyTemplate(PolicyTemplate_In* in  // IN: input parameter list
     //  complete the digest and get the results
     CryptHashEnd2B(&hashState, &session->u2.policyDigest.b);
 
-    // update cpHash in session context
-    session->u1.templateHash          = in->templateHash;
-    session->attributes.isTemplateSet = SET;
+    // update templateHash in session context
+    session->u1.templateHash                  = in->templateHash;
+    session->attributes.isTemplateHashDefined = SET;
 
     return TPM_RC_SUCCESS;
 }

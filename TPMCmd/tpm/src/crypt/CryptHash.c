@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 //
 // This file contains implementation of cryptographic functions for hashing.
@@ -87,9 +53,9 @@ BOOL CryptHashStartup(void)
 PHASH_DEF
 CryptGetHashDef(TPM_ALG_ID hashAlg)
 {
-#define GET_DEF(HASH, Hash) \
-  case ALG_##HASH##_VALUE:  \
-    return &Hash##_Def;
+#define GET_DEF(HASH, Hash)  \
+    case ALG_##HASH##_VALUE: \
+        return &Hash##_Def;
     switch(hashAlg)
     {
         FOR_EACH_HASH(GET_DEF)
@@ -216,13 +182,13 @@ void CryptHashExportState(
 {
     BYTE* outBuf = (BYTE*)externalFmt;
     //
-    cAssert(sizeof(HASH_STATE) <= sizeof(EXPORT_HASH_STATE));
+    MUST_BE(sizeof(HASH_STATE) <= sizeof(EXPORT_HASH_STATE));
     // the following #define is used to move data from an aligned internal data
     // structure to a byte buffer (external format data.
-#define CopyToOffset(value)                    \
-  memcpy(&outBuf[offsetof(HASH_STATE, value)], \
-         &internalFmt->value,                  \
-         sizeof(internalFmt->value))
+#define CopyToOffset(value)                      \
+    memcpy(&outBuf[offsetof(HASH_STATE, value)], \
+           &internalFmt->value,                  \
+           sizeof(internalFmt->value))
     // Copy the hashAlg
     CopyToOffset(hashAlg);
     CopyToOffset(type);
@@ -256,10 +222,10 @@ void CryptHashImportState(
 {
     BYTE* inBuf = (BYTE*)externalFmt;
 //
-#define CopyFromOffset(value)                 \
-  memcpy(&internalFmt->value,                 \
-         &inBuf[offsetof(HASH_STATE, value)], \
-         sizeof(internalFmt->value))
+#define CopyFromOffset(value)                   \
+    memcpy(&internalFmt->value,                 \
+           &inBuf[offsetof(HASH_STATE, value)], \
+           sizeof(internalFmt->value))
 
     // Copy the hashAlg of the byte-aligned input structure to the structure-aligned
     // internal structure.
@@ -338,7 +304,7 @@ LIB_EXPORT UINT16 CryptHashStart(
 {
     UINT16 retVal;
 
-    TEST(hashAlg);
+    TPM_DO_SELF_TEST(hashAlg);
 
     hashState->hashAlg = hashAlg;
     if(hashAlg == TPM_ALG_NULL)
@@ -701,7 +667,7 @@ LIB_EXPORT UINT16 CryptKDFa(
 
     pAssert(key != NULL && keyStream != NULL);
 
-    TEST(TPM_ALG_KDF1_SP800_108);
+    TPM_DO_SELF_TEST(TPM_ALG_KDF1_SP800_108);
 
     if(digestSize == 0)
         return 0;
@@ -828,14 +794,13 @@ LIB_EXPORT UINT16 CryptKDFe(TPM_ALG_ID   hashAlg,  // IN: hash algorithm used in
         // Add label
         if(label != NULL)
             CryptDigestUpdate2B(&hashState, label);
-        // Add a null. SP108 is not very clear about when the 0 is needed but to
-        // make this like the previous version that did not add an 0x00 after
-        // a null-terminated string, this version will only add a null byte
-        // if the label parameter did not end in a null byte, or if no label
-        // is present.
-        if((label == NULL) || (label->size == 0)
-           || (label->buffer[label->size - 1] != 0))
-            CryptDigestUpdateInt(&hashState, 1, 0);
+
+        // NIST.SP.800-56Cr2.pdf section 4.1 states that no NULL
+        // character is required here.
+        // Note, this is different from KDFa which is specified in
+        // NIST.SP.800-108r1.pdf section 4 (a NULL character is required
+        // for that case).
+
         // Add PartyUInfo
         if(partyUInfo != NULL)
             CryptDigestUpdate2B(&hashState, partyUInfo);

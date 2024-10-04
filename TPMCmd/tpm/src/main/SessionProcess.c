@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //**  Introduction
 // This file contains the subsystem that process the authorization sessions
 // including implementation of the Dictionary Attack logic. ExecCommand() uses
@@ -290,10 +256,10 @@ static BOOL IsAuthValueAvailable(TPM_HANDLE    handle,        // IN: handle of e
                 case TPM_RH_OWNER:
                 case TPM_RH_ENDORSEMENT:
                 case TPM_RH_PLATFORM:
-#ifdef VENDOR_PERMANENT
+#if VENDOR_PERMANENT_AUTH_ENABLED == YES
                     // This vendor defined handle associated with the
                     // manufacturer's shared secret
-                case VENDOR_PERMANENT:
+                case VENDOR_PERMANENT_AUTH_HANDLE:
 #endif
                     // The DA checking has been performed on LockoutAuth but we
                     // bypass the DA logic if we are using lockout policy. The
@@ -304,12 +270,16 @@ static BOOL IsAuthValueAvailable(TPM_HANDLE    handle,        // IN: handle of e
                 case TPM_RH_NULL:
                     result = TRUE;
                     break;
+
+#if ACT_SUPPORT
                     FOR_EACH_ACT(CASE_ACT_HANDLE)
                     {
                         // The ACT auth value is not available if the platform is disabled
                         result = g_phEnable == SET;
                         break;
                     }
+#endif  // ACT_SUPPORT
+
                 default:
                     // Otherwise authValue is not available.
                     break;
@@ -432,13 +402,16 @@ static BOOL IsAuthPolicyAvailable(TPM_HANDLE    handle,        // IN: handle of 
                     if(gc.platformPolicy.t.size != 0)
                         result = TRUE;
                     break;
-#define ACT_GET_POLICY(N)                 \
-  case TPM_RH_ACT_##N:                    \
-    if(go.ACT_##N.authPolicy.t.size != 0) \
-      result = TRUE;                      \
-    break;
+#if ACT_SUPPORT
+
+#  define ACT_GET_POLICY(N)                     \
+      case TPM_RH_ACT_##N:                      \
+          if(go.ACT_##N.authPolicy.t.size != 0) \
+              result = TRUE;                    \
+          break;
 
                     FOR_EACH_ACT(ACT_GET_POLICY)
+#endif  // ACT_SUPPORT
 
                 case TPM_RH_LOCKOUT:
                     if(gp.lockoutPolicy.t.size != 0)
@@ -527,10 +500,10 @@ static TPM2B_DIGEST* GetCpHashPointer(COMMAND* command, TPMI_ALG_HASH hashAlg)
 //
 // Define the macro that will expand for each implemented algorithm in the switch
 // statement below.
-#define GET_CP_HASH_POINTER(HASH, Hash)             \
-  case ALG_##HASH##_VALUE:                          \
-    retVal = (TPM2B_DIGEST*)&command->Hash##CpHash; \
-    break;
+#define GET_CP_HASH_POINTER(HASH, Hash)                 \
+    case ALG_##HASH##_VALUE:                            \
+        retVal = (TPM2B_DIGEST*)&command->Hash##CpHash; \
+        break;
 
     switch(hashAlg)
     {
@@ -554,10 +527,10 @@ static TPM2B_DIGEST* GetRpHashPointer(COMMAND* command, TPMI_ALG_HASH hashAlg)
 //
 // Define the macro that will expand for each implemented algorithm in the switch
 // statement below.
-#define GET_RP_HASH_POINTER(HASH, Hash)             \
-  case ALG_##HASH##_VALUE:                          \
-    retVal = (TPM2B_DIGEST*)&command->Hash##RpHash; \
-    break;
+#define GET_RP_HASH_POINTER(HASH, Hash)                 \
+    case ALG_##HASH##_VALUE:                            \
+        retVal = (TPM2B_DIGEST*)&command->Hash##RpHash; \
+        break;
 
     switch(hashAlg)
     {
@@ -672,7 +645,7 @@ static BOOL CompareTemplateHash(COMMAND* command,  // IN: parsing structure
 
 //*** CompareNameHash()
 // This function computes the name hash and compares it to the nameHash in the
-// session data.
+// session data, returning true if they are equal.
 BOOL CompareNameHash(COMMAND* command,  // IN: main parsing structure
                      SESSION* session   // IN: session structure with nameHash
 )
@@ -692,6 +665,27 @@ BOOL CompareNameHash(COMMAND* command,  // IN: main parsing structure
     // and compare
     return MemoryEqual(
         session->u1.nameHash.t.buffer, nameHash.t.buffer, nameHash.t.size);
+}
+
+//*** CompareParametersHash()
+// This function computes the parameters hash and compares it to the pHash in
+// the session data, returning true if they are equal.
+BOOL CompareParametersHash(COMMAND* command,  // IN: main parsing structure
+                           SESSION* session   // IN: session structure with pHash
+)
+{
+    HASH_STATE   hashState;
+    TPM2B_DIGEST pHash;
+    //
+    pHash.t.size = CryptHashStart(&hashState, session->authHashAlg);
+    //  Add commandCode.
+    CryptDigestUpdateInt(&hashState, sizeof(TPM_CC), command->code);
+    //  Add the parameters.
+    CryptDigestUpdate(&hashState, command->parameterSize, command->parameterBuffer);
+    //  Complete hash.
+    CryptHashEnd2B(&hashState, &pHash.b);
+    // and compare
+    return MemoryEqual2B(&session->u1.pHash.b, &pHash.b);
 }
 
 //*** CheckPWAuthSession()
@@ -1026,19 +1020,20 @@ static TPM_RC CheckPolicyAuthSession(
     // Check physical presence.
     if(session->attributes.isPPRequired == SET && !_plat__PhysicalPresenceAsserted())
         return TPM_RC_PP;
-    // Compare cpHash/nameHash if defined, or if the command requires an ADMIN or
-    // DUP role for this handle.
+    // Compare cpHash/nameHash/pHash/templateHash if defined.
     if(session->u1.cpHash.b.size != 0)
     {
-        BOOL OK;
+        BOOL OK = FALSE;
         if(session->attributes.isCpHashDefined)
             // Compare cpHash.
             OK = MemoryEqual2B(&session->u1.cpHash.b,
                                &ComputeCpHash(command, session->authHashAlg)->b);
-        else if(session->attributes.isTemplateSet)
-            OK = CompareTemplateHash(command, session);
-        else
+        else if(session->attributes.isNameHashDefined)
             OK = CompareNameHash(command, session);
+        else if(session->attributes.isParametersHashDefined)
+            OK = CompareParametersHash(command, session);
+        else if(session->attributes.isTemplateHashDefined)
+            OK = CompareTemplateHash(command, session);
         if(!OK)
             return TPM_RCS_POLICY_FAIL;
     }
@@ -1510,7 +1505,7 @@ ParseSessionBuffer(COMMAND* command  // IN: the structure that contains
             if(i > (command->sessionNum - 1))
                 return TPM_RC_AUTH_MISSING;
             // Record the handle associated with the authorization session
-            s_associatedHandles[i] = command->handles[i];
+            s_associatedHandles[i] = HierarchyNormalizeHandle(command->handles[i]);
         }
     }
     // Consistency checks are done first to avoid authorization failure when the
@@ -2066,7 +2061,8 @@ BuildResponseSession(COMMAND* command  // IN: structure that has relevant comman
             // expected to be well-formed for parameter encryption.
             // In the event that there is a bug elsewhere in the code and the
             // input data is not well-formed, CryptParameterEncryption will
-            // put the TPM into failure mode.
+            // put the TPM into failure mode instead of allowing the out-of-
+            // band write.
             CryptParameterEncryption(s_sessionHandles[s_encryptSessionIndex],
                                      &s_nonceCaller[s_encryptSessionIndex].b,
                                      command->parameterSize,
@@ -2141,7 +2137,7 @@ void SessionRemoveAssociationToHandle(TPM_HANDLE handle)
     //
     for(i = 0; i < MAX_SESSION_NUM; i++)
     {
-        if(s_associatedHandles[i] == handle)
+        if(s_associatedHandles[i] == HierarchyNormalizeHandle(handle))
         {
             s_associatedHandles[i] = TPM_RH_NULL;
         }

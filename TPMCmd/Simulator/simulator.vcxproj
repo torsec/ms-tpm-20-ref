@@ -220,7 +220,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;DEBUG;_CONSOLE;%(PreprocessorDefinitions);_DIAGNOSTICS</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -234,8 +234,8 @@
       <MinimalRebuild />
     </ClCompile>
     <Link>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -251,7 +251,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WolfDebug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;DEBUG;_CONSOLE;%(PreprocessorDefinitions);_DIAGNOSTICS</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -265,8 +265,8 @@
       <MinimalRebuild />
     </ClCompile>
     <Link>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -282,7 +282,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_DIAGNOSTICS</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -306,7 +306,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_DIAGNOSTICS</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -319,8 +319,8 @@
       <MinimalRebuild />
     </ClCompile>
     <Link>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -328,7 +328,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WolfDebug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_DIAGNOSTICS</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -341,8 +341,8 @@
       <MinimalRebuild />
     </ClCompile>
     <Link>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
     </Link>
@@ -350,7 +350,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Static|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);_DIAGNOSTICS</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -379,7 +379,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
       <MinimalRebuild />
@@ -390,8 +390,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
@@ -405,7 +405,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
       <MinimalRebuild />
@@ -416,8 +416,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <TargetMachine>MachineX86</TargetMachine>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
@@ -432,7 +432,7 @@
       </PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
       <MinimalRebuild />
@@ -442,8 +442,8 @@
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -460,7 +460,7 @@
       </PrecompiledHeader>
       <WarningLevel>EnableAllWarnings</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)tpm\include\;$(SolutionDir)tpm\include\prototypes;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)include\;$(ProjectDir)include\prototypes;$(SolutionDir)\tpm\include\;$(SolutionDir)\tpm\include\public\;$(SolutionDir)\tpm\include\platform_interface\;$(SolutionDir)platform\include\;$(SolutionDir)platform\include\prototypes;$(SolutionDir)TpmConfiguration</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DisableSpecificWarnings>4668;4710;4711;4820;5045</DisableSpecificWarnings>
       <MinimalRebuild />
@@ -470,7 +470,7 @@
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>tpm.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib</AdditionalDependencies>
+      <AdditionalDependencies>tpm.lib;libcrypto.lib;platform.lib;Ws2_32.lib;Rpcrt4.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)\lib;$(OutDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <ProjectReference>

@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //**Introduction
 // This module provides the platform specific entry and fail processing. The
 // _plat__RunCommand() function is used to call to ExecuteCommand() in the TPM code.
@@ -42,16 +8,31 @@
 // code will have set the flag to indicate that the TPM is in failure mode.
 // This call will then recursively call ExecuteCommand in order to build the
 // failure mode response. When ExecuteCommand() returns to _plat__Fail(), the
-// platform will do some platform specif operation to return to the environment in
+// platform will do some platform specific operation to return to the environment in
 // which the TPM is executing. For a simulator, setjmp/longjmp is used. For an OS,
 // a system exit to the OS would be appropriate.
 
 //** Includes and locals
 #include "Platform.h"
+#include <assert.h>
 #include <setjmp.h>
-#include "ExecCommand_fp.h"
+#include <stdio.h>
 
 jmp_buf s_jumpBuffer;
+
+// The following extern globals are copied here from Global.h to avoid including all of Tpm.h here.
+// TODO: Improve the interface by which these values are shared.
+extern BOOL g_inFailureMode;  // Indicates that the TPM is in failure mode
+#if ALLOW_FORCE_FAILURE_MODE
+extern BOOL g_forceFailureMode;  // flag to force failure mode during test
+#endif
+#if FAIL_TRACE
+// The name of the function that triggered failure mode.
+extern const char* s_failFunctionName;
+#endif  // FAIL_TRACE
+extern UINT32 s_failFunction;
+extern UINT32 s_failLine;
+extern UINT32 s_failCode;
 
 //** Functions
 
@@ -77,5 +58,23 @@ LIB_EXPORT void _plat__RunCommand(
 // This is the platform depended failure exit for the TPM.
 LIB_EXPORT NORETURN void _plat__Fail(void)
 {
+
+#if ALLOW_FORCE_FAILURE_MODE
+    // The simulator asserts during unexpected (i.e., un-forced) failure modes.
+    if(!g_forceFailureMode)
+    {
+        fprintf(stderr, "Unexpected failure mode (code %d) in ", s_failCode);
+#  if FAIL_TRACE
+        fprintf(stderr, "function '%s' (line %d)\n", s_failFunctionName, s_failLine);
+#  else   // FAIL_TRACE
+        fprintf(stderr, "location code 0x%0x\n", s_locationCode);
+#  endif  // FAIL_TRACE
+        assert(FALSE);
+    }
+
+    // Clear the forced-failure mode flag for next time.
+    g_forceFailureMode = FALSE;
+#endif  // ALLOW_FORCE_FAILURE_MODE
+
     longjmp(&s_jumpBuffer[0], 1);
 }

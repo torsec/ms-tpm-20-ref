@@ -60,7 +60,8 @@ AX_PTHREAD([], [AC_MSG_ERROR([requires pthread])])
 
 AC_DEFINE([HASH_LIB], [Ossl], [Crypto lib for hash algorithms])
 AC_DEFINE([SYM_LIB], [Ossl], [Crypto lib for symmetric encryption algorithms])
-AC_DEFINE([MATH_LIB], [Ossl], [Crypto lib for bignum operations])
+AC_DEFINE([MATH_LIB], [TpmBigNum], [Crypto lib for asymmetric operations])
+AC_DEFINE([BN_MATH_LIB], [Ossl], [Math lib for tpmbignum operations])
 
 ADD_COMPILER_FLAG([-std=gnu11])
 ADD_COMPILER_FLAG([-Werror])
@@ -68,12 +69,12 @@ ADD_COMPILER_FLAG([-Wall])
 ADD_COMPILER_FLAG([-Wformat-security])
 ADD_COMPILER_FLAG([-fstack-protector-all])
 ADD_COMPILER_FLAG([-fPIC])
-ADD_COMPILER_FLAG([-Wno-error=empty-body])
-ADD_COMPILER_FLAG([-Wno-error=expansion-to-defined])
-ADD_COMPILER_FLAG([-Wno-error=parentheses])
-ADD_COMPILER_FLAG([-Wno-error=pointer-to-int-cast])
-ADD_COMPILER_FLAG([-Wno-error=missing-braces])
-ADD_COMPILER_FLAG([-Wno-error=unused-result])
+
+# This is needed when compiling against OpenSSL 3.0, as the Ossl bindings use:
+#  - EC_POINT_set_affine_coordinates_GFp / EC_POINTs_mul
+#  - AES_set_encrypt_key / AES_encrypt
+#  - Camellia_set_key / Camellia_encrypt
+ADD_COMPILER_FLAG([-Wno-error=deprecated-declarations])
 
 AS_IF([test "x$enable_usedeviceid" = "xyes"], [
     ADD_COMPILER_FLAG([-DNDEBUG])

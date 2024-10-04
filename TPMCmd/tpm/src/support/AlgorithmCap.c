@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 // This file contains the algorithm property definitions for the algorithms and the
 // code for the TPM2_GetCapability() to return the algorithm properties.
@@ -52,9 +18,6 @@ static const ALGORITHM s_algorithms[] = {
 // table from the TPM_ALG description
 #if ALG_RSA
     {TPM_ALG_RSA, TPMA_ALGORITHM_INITIALIZER(1, 0, 0, 1, 0, 0, 0, 0, 0)},
-#endif
-#if ALG_TDES
-    {TPM_ALG_TDES, TPMA_ALGORITHM_INITIALIZER(0, 1, 0, 0, 0, 0, 0, 0, 0)},
 #endif
 #if ALG_SHA1
     {TPM_ALG_SHA1, TPMA_ALGORITHM_INITIALIZER(0, 0, 1, 0, 0, 0, 0, 0, 0)},
@@ -210,6 +173,35 @@ AlgorithmCapGetImplemented(TPM_ALG_ID algID,  // IN: the starting algorithm ID
     }
 
     return more;
+}
+
+//** AlgorithmCapGetOneImplemented()
+// This function returns whether a single algorithm was implemented, along
+// with its properties (if implemented).
+BOOL AlgorithmCapGetOneImplemented(
+    TPM_ALG_ID         algID,       // IN: the algorithm ID
+    TPMS_ALG_PROPERTY* algProperty  // OUT: algorithm properties
+)
+{
+    UINT32 i;
+    UINT32 algNum;
+
+    // Compute how many algorithms are defined in s_algorithms array.
+    algNum = sizeof(s_algorithms) / sizeof(s_algorithms[0]);
+
+    // Scan the implemented algorithm list to see if there is a match to 'algID'.
+    for(i = 0; i < algNum; i++)
+    {
+        // If algID is less than the starting algorithm ID, skip it
+        if(s_algorithms[i].algID == algID)
+        {
+            algProperty->alg           = algID;
+            algProperty->algProperties = s_algorithms[i].attributes;
+            return TRUE;
+        }
+    }
+
+    return FALSE;
 }
 
 //** AlgorithmGetImplementedVector()

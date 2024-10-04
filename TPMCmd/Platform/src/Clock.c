@@ -1,37 +1,3 @@
-/* Microsoft Reference Implementation for TPM 2.0
- *
- *  The copyright in this software is being made available under the BSD License,
- *  included below. This software may be subject to other third party and
- *  contributor rights, including patent rights, and no such rights are granted
- *  under this license.
- *
- *  Copyright (c) Microsoft Corporation
- *
- *  All rights reserved.
- *
- *  BSD License
- *
- *  Redistribution and use in source and binary forms, with or without modification,
- *  are permitted provided that the following conditions are met:
- *
- *  Redistributions of source code must retain the above copyright notice, this list
- *  of conditions and the following disclaimer.
- *
- *  Redistributions in binary form must reproduce the above copyright notice, this
- *  list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ""AS IS""
- *  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- *  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
- *  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 //** Description
 //
 // This file contains the routines that are used by the simulator to mimic
@@ -43,7 +9,25 @@
 //** Includes and Data Definitions
 #include <assert.h>
 #include "Platform.h"
-#include "TpmFail_fp.h"
+
+// CLOCK_NOMINAL is the number of hardware ticks per ms. A value of 30000 means
+// that the nominal clock rate used to drive the hardware clock is 30 MHz. The
+// adjustment rates are used to determine the conversion of the hardware ticks to
+// internal hardware clock value. In practice, we would expect that there would be
+// a hardware register will accumulated mS. It would be incremented by the output
+// of a pre-scaler. The pre-scaler would divide the ticks from the clock by some
+// value that would compensate for the difference between clock time and real time.
+// The code in Clock does the emulation of this function.
+#define CLOCK_NOMINAL 30000
+// A 1% change in rate is 300 counts
+#define CLOCK_ADJUST_COARSE 300
+// A 0.1% change in rate is 30 counts
+#define CLOCK_ADJUST_MEDIUM 30
+// A minimum change in rate is 1 count
+#define CLOCK_ADJUST_FINE 1
+// The clock tolerance is +/-15% (4500 counts)
+// Allow some guard band (16.7%)
+#define CLOCK_ADJUST_LIMIT 5000
 
 //** Simulator Functions
 //*** Introduction
@@ -217,35 +201,31 @@ LIB_EXPORT int _plat__TimerWasStopped(void)
 
 //***_plat__ClockAdjustRate()
 // Adjust the clock rate
-LIB_EXPORT void _plat__ClockAdjustRate(
-    int adjust  // IN: the adjust number.  It could be positive
-                //     or negative
-)
+LIB_EXPORT void _plat__ClockRateAdjust(_plat__ClockAdjustStep adjust)
 {
     // We expect the caller should only use a fixed set of constant values to
     // adjust the rate
     switch(adjust)
     {
-        case CLOCK_ADJUST_COARSE:
+        // slower increases the divisor
+        case PLAT_TPM_CLOCK_ADJUST_COARSE_SLOWER:
             s_adjustRate += CLOCK_ADJUST_COARSE;
             break;
-        case -CLOCK_ADJUST_COARSE:
-            s_adjustRate -= CLOCK_ADJUST_COARSE;
-            break;
-        case CLOCK_ADJUST_MEDIUM:
+        case PLAT_TPM_CLOCK_ADJUST_MEDIUM_SLOWER:
             s_adjustRate += CLOCK_ADJUST_MEDIUM;
             break;
-        case -CLOCK_ADJUST_MEDIUM:
-            s_adjustRate -= CLOCK_ADJUST_MEDIUM;
-            break;
-        case CLOCK_ADJUST_FINE:
+        case PLAT_TPM_CLOCK_ADJUST_FINE_SLOWER:
             s_adjustRate += CLOCK_ADJUST_FINE;
             break;
-        case -CLOCK_ADJUST_FINE:
+        // faster decreases the divisor
+        case PLAT_TPM_CLOCK_ADJUST_FINE_FASTER:
             s_adjustRate -= CLOCK_ADJUST_FINE;
             break;
-        default:
-            // ignore any other values;
+        case PLAT_TPM_CLOCK_ADJUST_MEDIUM_FASTER:
+            s_adjustRate -= CLOCK_ADJUST_MEDIUM;
+            break;
+        case PLAT_TPM_CLOCK_ADJUST_COARSE_FASTER:
+            s_adjustRate -= CLOCK_ADJUST_COARSE;
             break;
     }
 
