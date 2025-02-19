@@ -127,6 +127,8 @@ typedef UINT16 TPM_ALG_ID;
 #define TPM_ALG_CFB              (TPM_ALG_ID)(ALG_CFB_VALUE)
 #define ALG_ECB_VALUE            0x0044
 #define TPM_ALG_ECB              (TPM_ALG_ID)(ALG_ECB_VALUE)
+#define ALG_SPHINCS_SHAKE_256F_VALUE		0x0045
+#define TPM_ALG_SPHINCS_SHAKE_256F		        (TPM_ALG_ID)(ALG_SPHINCS_SHAKE_256F_VALUE)
 #define ALG_CCM_VALUE            0x0050
 #define TPM_ALG_CCM              (TPM_ALG_ID)(ALG_CCM_VALUE)
 #define ALG_GCM_VALUE            0x0051
@@ -2383,6 +2385,15 @@ typedef union
     TPM2B b;
 } TPM2B_PUBLIC_KEY_RSA;
 
+typdef union {
+    struct
+    {
+        UINT16  size;
+        BYTE    buffer[ALG_SPHINCS_PUBLIC_KEY_BYTES];
+    }   t;
+    TPM2B b;
+} TPM2B_PUBLIC_KEY_SPHINCS;
+
 typedef TPM_KEY_BITS TPMI_RSA_KEY_BITS;  // (Part 2: Structures)
 typedef union
 {  // (Part 2: Structures)
@@ -2393,6 +2404,16 @@ typedef union
     } t;
     TPM2B b;
 } TPM2B_PRIVATE_KEY_RSA;
+
+typedef union
+{
+    struct
+    {
+        UINT16 size;
+        BYTE buffer[ALG_SPHINCS_PRIVATE_KEY_BYTES];
+    }   t;
+    TPM2B b;
+} TPM2B_PRIVATE_KEY_SPHINCS;
 
 typedef union
 {  // (Part 2: Structures)
@@ -2557,6 +2578,9 @@ typedef union
 #if ALG_ECC
     TPMS_ECC_POINT ecc;
 #endif  // ALG_ECC
+#if ALG_LIBOQS
+    TPM2B_PUBLIC_KEY_SPHINCS sphincs;
+#endif //ALG_LIBOQS
     TPMS_DERIVE derive;
 } TPMU_PUBLIC_ID;
 
@@ -2660,6 +2684,9 @@ typedef union
 #if ALG_SYMCIPHER
     TPM2B_SYM_KEY sym;
 #endif  // ALG_SYMCIPHER
+#if ALG_LIBOQS
+    TPM2B_PRIVATE_KEY_SPHINCS sphincs;
+#endif //ALG_LIBOQS
     TPM2B_PRIVATE_VENDOR_SPECIFIC any;
 } TPMU_SENSITIVE_COMPOSITE;
 
