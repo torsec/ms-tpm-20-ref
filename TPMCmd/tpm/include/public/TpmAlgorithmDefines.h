@@ -144,6 +144,16 @@
 #  define MAX_RSA_KEY_BYTES BITS_TO_BYTES(RSA_MAX_KEY_SIZE_BITS)
 #endif  // ALG_RSA
 
+#if ALG_LIBOQS
+
+#include <oqs/oqs.h>
+
+#define ALG_SPHINCS_PRIVATE_KEY_BYTES	OQS_SIG_sphincs_shake_256f_simple_length_secret_key
+#define ALG_SPHINCS_PUBLIC_KEY_BYTES	OQS_SIG_sphincs_shake_256f_simple_length_public_key
+#define ALG_SPHINCS_SIGNATURE_KEY_BYTES	OQS_SIG_sphincs_shake_256f_simple_length_signature
+
+#endif
+
 // Table "Defines for AES Symmetric Cipher Algorithm Constants" (TCG Algorithm Registry)
 #define AES_KEY_SIZES_BITS (AES_128 * 128), (AES_192 * 192), (AES_256 * 256)
 #define AES_MAX_KEY_SIZE_BITS \
