@@ -1086,7 +1086,11 @@ CryptCreateObject(OBJECT*                object,  // IN: new object structure po
             result = CryptRsaGenerateKey(publicArea, sensitive, rand);
             break;
 #endif  // ALG_RSA
-
+#if ALG_LIBOQS
+        case TPM_ALG_SPHINCS_SHAKE_256F:
+        	result = CryptSphincsGenerateKeyPair(publicArea, sensitive, rand); ---> In questo posto viene creata la chiave *modificare la funzione*
+            break;
+#endif //ALG_LIBOQS
 #if ALG_ECC
         // Create ECC key
         case TPM_ALG_ECC:
