@@ -77,6 +77,12 @@
 #define     ALG_RSAPSS                      (YES * ALG_RSA)
 #define     ALG_OAEP                        (YES * ALG_RSA)
 
+//***********************************************
+// Defines for SPHINCS Algorithms
+//***********************************************
+#define ALG_LIBOQS                  ALG_YES
+
+
 // RSA Implementation Styles
 // use Chinese Remainder Theorem (5 prime) format for private key ?
 #define CRT_FORMAT_RSA                  YES
