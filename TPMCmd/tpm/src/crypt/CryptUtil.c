@@ -7,6 +7,7 @@
 //** Includes
 #include "Tpm.h"
 #include "Marshal.h"
+#include "CryptLiboqs.h"
 
 //****************************************************************************/
 //**     Hash/HMAC Functions
@@ -1253,6 +1254,10 @@ BOOL CryptIsAsymSignScheme(TPMI_ALG_PUBLIC      publicType,  // IN: Type of the 
             break;
 #endif  // ALG_RSA
 
+#if ALG_LIBOQS
+                case TPM_ALG_SPHINCS_SHAKE_256F:
+                    break;
+#endif
 #if ALG_ECC
         // If ECC is implemented ECDSA is required
         case TPM_ALG_ECC:
