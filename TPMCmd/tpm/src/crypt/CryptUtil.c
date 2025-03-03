@@ -1490,6 +1490,11 @@ CryptSign(OBJECT*          signKey,     // IN: signing key
         case TPM_ALG_KEYEDHASH:
             result = CryptHmacSign(signature, signKey, digest);
             break;
+#if ALG_LIBOQS
+	    case TPM_ALG_SPHINCS_SHAKE_256F:
+		    result = CryptSphincsSign(signature, signKey, digest, NULL);
+		    break;
+#endif //ALG_LIBOQS
         default:
             FAIL(FATAL_ERROR_INTERNAL);
             break;
