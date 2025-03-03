@@ -49,3 +49,43 @@ TPM_RC CryptSphincsGenerateKeyPair(
    		//OQS_SIG_free(sig);
     		return TPM_RC_SUCCESS;
 	}
+
+TPM_RC CryptSphincsSign(TPMT_SIGNATURE* sigOut,
+			OBJECT*		key,
+			TPM2B_DIGEST* 	digest,
+			RAND_STATE*	rand
+			){
+
+			TPM_RC retVal = TPM_RC_SUCCESS;
+			UINT16 modSize;
+
+			// Inseriamo un check
+			pAssert(sigOut != NULL && key != NULL && digest != NULL);
+
+			/* Allochiamo dinamicamente il buffer della firma */
+			printf("Arrivato prima della malloc\n");
+			sigOut->signature.sphincs.sig.t.buffer = malloc(OQS_SIG_sphincs_shake_256f_simple_length_signature);
+			printf("Dopo la malloc\n");
+
+			modSize = key->publicArea.unique.sphincs.t.size;
+
+			if(retVal == TPM_RC_SUCCESS){
+
+				if(crypto_sign_signature(
+					sigOut->signature.sphincs.sig.t.buffer/*Il contenitore della signature*/,
+					&sigOut->signature.sphincs.sig.t.size/*La dimensione della signature*/,
+					digest->b.buffer /*Il messaggio da firmare*/,
+					digest->b.size /*La dimensione della messaggio*/,
+					key->sensitive.sensitive.sphincs.t.buffer /* secret key*/) != OQS_SUCCESS)
+						return TPM_RC_FAILURE;
+				printf("Firma generata correttamente\n");
+				for(size_t i=0; i < OQS_SIG_sphincs_shake_256f_simple_length_signature; i++){
+					printf("%02X", sigOut->signature.sphincs.sig.t.buffer[i]);
+				}
+				printf("\n");
+				free(sigOut->signature.sphincs.sig.t.buffer);
+			}
+
+
+			return TPM_RC_FAILURE;
+			}
