@@ -2394,6 +2394,15 @@ typdef union {
     TPM2B b;
 } TPM2B_PUBLIC_KEY_SPHINCS;
 
+typedef union {
+    struct
+    {
+        UINT16 size;
+        BYTE *buffer;
+    }   t;
+    TPM2B b;
+} TPM2B_SIGNATURE_SPHINCS;
+
 typedef TPM_KEY_BITS TPMI_RSA_KEY_BITS;  // (Part 2: Structures)
 typedef union
 {  // (Part 2: Structures)
@@ -2472,6 +2481,11 @@ typedef TPMS_SIGNATURE_RSA TPMS_SIGNATURE_RSAPSS;
 typedef TPMS_SIGNATURE_RSA TPMS_SIGNATURE_RSASSA;
 #define TYPE_OF_TPMS_SIGNATURE_RSASSA TPMS_SIGNATURE_RSA
 
+typedef struct {
+	TPMI_ALG_HASH 	hash;
+	TPM2B_SIGNATURE_SPHINCS sig;
+} TPMS_SIGNATURE_SPHINCS;
+
 typedef struct
 {  // (Part 2: Structures)
     TPMI_ALG_HASH       hash;
@@ -2528,6 +2542,9 @@ typedef union
 #if ALG_XMSS
     TPMS_SIGNATURE_XMSS xmss;
 #endif  // ALG_XMSS
+#if ALG_LIBOQS
+    TPMS_SIGNATURE_SPHINCS sphincs;
+#endif //ALG_LIBOQS
     TPMS_SCHEME_HASH any;
 } TPMU_SIGNATURE;
 
