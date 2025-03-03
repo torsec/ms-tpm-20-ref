@@ -5044,6 +5044,36 @@ TPM2B_PUBLIC_KEY_SPHINCS_Marshal(TPM2B_PUBLIC_KEY_SPHINCS *source, BYTE **buffer
 }
 #endif ALG_LIBOQS
 
+#if ALG_LIBOQS
+TPM_RC
+TPM2B_SIGNATURE_SPHINCS_Unmarshal(TPM2B_SIGNATURE_SPHINCS *target, BYTE **buffer, INT32 *size)
+{
+    TPM_RC    result;
+    result = UINT16_Unmarshal((UINT16 *)&(target->t.size), buffer, size);
+    if(result == TPM_RC_SUCCESS)
+    {
+        if((target->t.size) > 64)
+            result = TPM_RC_SIZE;
+        else
+            result = BYTE_Array_Unmarshal((BYTE *)(target->t.buffer), buffer, size, (INT32)(target->t.size));
+    }
+    return result;
+}
+
+UINT16
+TPM2B_SIGNATURE_SPHINCS_Marshal(TPM2B_SIGNATURE_SPHINCS *source, BYTE **buffer, INT32 *size)
+{
+    UINT16    result = 0;
+    result = (UINT16)(result + UINT16_Marshal((UINT16 *)&(source->t.size), buffer, size));
+    // if size equal to 0, the rest of the structure is a zero buffer.  Stop processing
+    if(source->t.size == 0)
+        return result;
+    result = (UINT16)(result + BYTE_Array_Marshal((BYTE *)(source->t.buffer), buffer, size, (INT32)(source->t.size)));
+    return result;
+}
+
+#endif // ALG_LIBOQS
+
 // Table "Definition of TPMI_RSA_KEY_BITS Type" (Part 2: Structures)
 TPM_RC
 TPMI_RSA_KEY_BITS_Unmarshal(TPMI_RSA_KEY_BITS* target, BYTE** buffer, INT32* size)
@@ -5465,6 +5495,27 @@ TPMS_SIGNATURE_RSA_Marshal(TPMS_SIGNATURE_RSA* source, BYTE** buffer, INT32* siz
     return result;
 }
 
+#if ALG_LIBOQS
+TPM_RC
+TPMS_SIGNATURE_SPHINCS_Unmarshal(TPMS_SIGNATURE_SPHINCS *target, BYTE **buffer, INT32 *size)
+{
+    TPM_RC    result;
+    result = TPMI_ALG_HASH_Unmarshal((TPMI_ALG_HASH *)&(target->hash), buffer, size, 0);
+    if(result == TPM_RC_SUCCESS)
+        result = TPM2B_SIGNATURE_SPHINCS_Unmarshal((TPM2B_SIGNATURE_SPHINCS *)&(target->sig), buffer, size);
+    return result;
+}
+
+UINT16
+TPMS_SIGNATURE_SPHINCS_Marshal(TPMS_SIGNATURE_SPHINCS *source, BYTE **buffer, INT32 *size)
+{
+    UINT16    result = 0;
+    result = (UINT16)(result + TPMI_ALG_HASH_Marshal((TPMI_ALG_HASH *)&(source->hash), buffer, size));
+    result = (UINT16)(result + TPM2B_SIGNATURE_SPHINCS_Marshal((TPM2B_SIGNATURE_SPHINCS *)&(source->sig), buffer, size));
+    return result;
+}
+#endif // ALG_LIBOQS
+
 // Table "Definition of Types for Signature" (Part 2: Structures)
 #  if !USE_MARSHALING_DEFINES
 TPM_RC
@@ -5658,6 +5709,10 @@ TPMU_SIGNATURE_Unmarshal(
             return TPMS_SIGNATURE_XMSS_Unmarshal(
                 (TPMS_SIGNATURE_XMSS*)&(target->xmss), buffer, size);
 #  endif  // ALG_XMSS
+#if ALG_LIBOQS
+	case TPM_ALG_SPHINCS_SHAKE_256F:
+	    return TPMS_SIGNATURE_SPHINCS_Unmarshal((TPMS_SIGNATURE_SPHINCS *)&(target->sphincs), buffer, size);
+#endif // ALG_LIBOQS
         case TPM_ALG_NULL:
             return TPM_RC_SUCCESS;
     }
@@ -5723,6 +5778,10 @@ TPMU_SIGNATURE_Marshal(
             return TPMS_SIGNATURE_XMSS_Marshal(
                 (TPMS_SIGNATURE_XMSS*)&(source->xmss), buffer, size);
 #  endif  // ALG_XMSS
+#if ALG_LIBOQS
+	case TPM_ALG_SPHINCS_SHAKE_256F:
+	    return TPMS_SIGNATURE_SPHINCS_Marshal((TPMS_SIGNATURE_SPHINCS *)&(source->sphincs), buffer, size);
+#endif // ALG_LIBOQS
     }
     return 0;
 }
