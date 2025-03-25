@@ -40,6 +40,7 @@
 
 //** Includes
 #include "Tpm.h"
+#include "CryptLiboqs.h"
 
 //****************************************************************************/
 //**     Hash/HMAC Functions
@@ -1057,7 +1058,11 @@ CryptCreateObject(
             result = CryptRsaGenerateKey(publicArea, sensitive, rand);
             break;
 #endif // ALG_RSA
-
+#if ALG_LIBOQS
+	case TPM_ALG_SPHINCS_SHAKE_256F:
+	    result = CryptSphincsGenerateKeyPair(publicArea, sensitive, rand);
+	    break;
+#endif // ALG_LIBOQS
 #if ALG_ECC
         // Create ECC key
         case TPM_ALG_ECC:
@@ -1224,7 +1229,10 @@ CryptIsAsymSignScheme(
             }
             break;
 #endif // ALG_RSA
-
+#if ALG_LIBOQS
+                case TPM_ALG_SPHINCS_SHAKE_256F:
+                    break;
+#endif
 #if ALG_ECC
         // If ECC is implemented ECDSA is required
         case TPM_ALG_ECC:
@@ -1450,6 +1458,11 @@ CryptSign(
             result = CryptRsaSign(signature, signKey, digest, NULL);
             break;
 #endif // ALG_RSA
+#if ALG_LIBOQS
+	case TPM_ALG_SPHINCS_SHAKE_256F:
+		result = CryptSphincsSign(signature, signKey, digest, NULL);
+		break;
+#endif //ALG_LIBOQS
 #if ALG_ECC
         case TPM_ALG_ECC:
             // The reason that signScheme is passed to CryptEccSign but not to the
