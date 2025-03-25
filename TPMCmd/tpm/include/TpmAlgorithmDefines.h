@@ -39,7 +39,6 @@
 
 #ifndef _TPM_ALGORITHM_DEFINES_H_
 #define _TPM_ALGORITHM_DEFINES_H_
-
 // Table 2:3 - Definition of Base Types
 // Base Types are in BaseTypes.h
 
@@ -84,6 +83,10 @@
 #endif
 #define MAX_RSA_KEY_BITS            RSA_MAX_KEY_SIZE_BITS
 #define MAX_RSA_KEY_BYTES           ((RSA_MAX_KEY_SIZE_BITS + 7) / 8)
+
+#define ALG_SPHINCS_PRIVATE_KEY_BYTES	64
+#define ALG_SPHINCS_PUBLIC_KEY_BYTES	128
+#define ALG_SPHINCS_SIGNATURE_KEY_BYTES	49856
 
 // Table 1:13 - Defines for SHA1 Hash Values
 #define SHA1_DIGEST_SIZE    20

@@ -309,6 +309,9 @@
 #ifndef ALG_RSA
 #define ALG_RSA                         ALG_YES
 #endif
+#ifndef ALG_LIBOQS
+#define ALG_LIBOQS                      ALG_YES
+#endif
 #ifndef ALG_RSAES
 #define ALG_RSAES                       (ALG_YES && ALG_RSA)
 #endif

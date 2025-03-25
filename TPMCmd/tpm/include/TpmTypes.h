@@ -1947,6 +1947,22 @@ typedef union {                                     // Table 2:175
     TPM2B        b;
 } TPM2B_PUBLIC_KEY_RSA;                             /* Structure */
 
+typedef union {
+    struct {
+        UINT16		   size;
+        BYTE		   buffer[ALG_SPHINCS_PUBLIC_KEY_BYTES];
+    } 		 t;
+    TPM2B    	 b;
+} TPM2B_PUBLIC_KEY_SPHINCS;
+
+typedef union {
+    struct {
+        UINT16		   size;
+        BYTE		   *buffer;
+    } 		 t;
+    TPM2B    	 b;
+} TPM2B_SIGNATURE_SPHINCS;
+
 typedef TPM_KEY_BITS        TPMI_RSA_KEY_BITS;      // Table 2:176  /* Interface */
 
 typedef union {                                     // Table 2:177
@@ -1956,6 +1972,14 @@ typedef union {                                     // Table 2:177
     }            t;
     TPM2B        b;
 } TPM2B_PRIVATE_KEY_RSA;                            /* Structure */
+
+typedef union {
+    struct {
+        UINT16		   size;
+        BYTE		   buffer[ALG_SPHINCS_PRIVATE_KEY_BYTES];
+    } 		 t;
+    TPM2B    	 b;
+} TPM2B_PRIVATE_KEY_SPHINCS;
 
 typedef union {                                     // Table 2:178
     struct {
@@ -2003,6 +2027,11 @@ typedef struct {                                    // Table 2:185
     TPM2B_PUBLIC_KEY_RSA        sig;
 } TPMS_SIGNATURE_RSA;                               /* Structure */
 
+typedef struct {
+	TPMI_ALG_HASH 	hash;
+	TPM2B_SIGNATURE_SPHINCS	sig;
+} TPMS_SIGNATURE_SPHINCS;
+
 // Table 2:186 - Definition of Types for Signature
 typedef TPMS_SIGNATURE_RSA  TPMS_SIGNATURE_RSASSA;
 typedef TPMS_SIGNATURE_RSA  TPMS_SIGNATURE_RSAPSS;
@@ -2041,6 +2070,9 @@ typedef union {                                     // Table 2:189
 #if ALG_HMAC
     TPMT_HA                         hmac;
 #endif // ALG_HMAC
+#if ALG_LIBOQS
+    TPMS_SIGNATURE_SPHINCS	    sphincs;
+#endif // ALG_LIBOQS
     TPMS_SCHEME_HASH                any;
 } TPMU_SIGNATURE;                                   /* Structure */
 
@@ -2087,6 +2119,9 @@ typedef union {                                     // Table 2:194
 #if ALG_ECC
     TPMS_ECC_POINT              ecc;
 #endif // ALG_ECC
+#if ALG_LIBOQS
+    TPM2B_PUBLIC_KEY_SPHINCS	sphincs;
+#endif
     TPMS_DERIVE                 derive;
 } TPMU_PUBLIC_ID;                                   /* Structure */
 
@@ -2178,6 +2213,9 @@ typedef union {                                     // Table 2:205
     TPM2B_SYM_KEY                       sym;
 #endif // ALG_SYMCIPHER
     TPM2B_PRIVATE_VENDOR_SPECIFIC       any;
+#if ALG_LIBOQS
+    TPM2B_PRIVATE_KEY_SPHINCS		sphincs;
+#endif // ALG_LIBOQS
 } TPMU_SENSITIVE_COMPOSITE;                         /* Structure */
 
 typedef struct {                                    // Table 2:206
