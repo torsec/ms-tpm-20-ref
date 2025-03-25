@@ -1442,6 +1442,9 @@ TPMI_ALG_ASYM_Unmarshal(TPMI_ALG_ASYM *target, BYTE **buffer, INT32 *size, BOOL 
 #if ALG_RSA
             case TPM_ALG_RSA:
 #endif // ALG_RSA
+#if ALG_LIBOQS
+	    case TPM_ALG_SPHINCS_SHAKE_256F:
+#endif //ALG_LIBOQS
 #if ALG_ECC
             case TPM_ALG_ECC:
 #endif // ALG_ECC
@@ -4778,6 +4781,10 @@ TPMU_SIGNATURE_Unmarshal(TPMU_SIGNATURE *target, BYTE **buffer, INT32 *size, UIN
         case TPM_ALG_HMAC:
             return TPMT_HA_Unmarshal((TPMT_HA *)&(target->hmac), buffer, size, 0);
 #endif // ALG_HMAC
+#if ALG_LIBOQS
+	case TPM_ALG_SPHINCS_SHAKE_256F:
+	    return TPMS_SIGNATURE_SPHINCS_Unmarshal((TPMS_SIGNATURE_SPHINCS *)&(target->sphincs), buffer, size);
+#endif // ALG_LIBOQS
         case TPM_ALG_NULL:
             return TPM_RC_SUCCESS;
     }
@@ -4815,6 +4822,10 @@ TPMU_SIGNATURE_Marshal(TPMU_SIGNATURE *source, BYTE **buffer, INT32 *size, UINT3
         case TPM_ALG_HMAC:
             return TPMT_HA_Marshal((TPMT_HA *)&(source->hmac), buffer, size);
 #endif // ALG_HMAC
+#if ALG_LIBOQS
+	case TPM_ALG_SPHINCS_SHAKE_256F:
+	    return TPMS_SIGNATURE_SPHINCS_Marshal((TPMS_SIGNATURE_SPHINCS *)&(source->sphincs), buffer, size);
+#endif // ALG_LIBOQS
         case TPM_ALG_NULL:
             return 0;
     }
@@ -4928,6 +4939,9 @@ TPMI_ALG_PUBLIC_Unmarshal(TPMI_ALG_PUBLIC *target, BYTE **buffer, INT32 *size)
 #if ALG_RSA
             case TPM_ALG_RSA:
 #endif // ALG_RSA
+#if ALG_LIBOQS
+	    case TPM_ALG_SPHINCS_SHAKE_256F:
+#endif //ALG_LIBOQS
 #if ALG_ECC
             case TPM_ALG_ECC:
 #endif // ALG_ECC
