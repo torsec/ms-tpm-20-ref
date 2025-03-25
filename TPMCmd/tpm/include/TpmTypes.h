@@ -125,10 +125,13 @@ typedef UINT16                          TPM_ALG_ID;
 #define TPM_ALG_CFB                     (TPM_ALG_ID)(ALG_CFB_VALUE)
 #define     ALG_ECB_VALUE               0x0044
 #define TPM_ALG_ECB                     (TPM_ALG_ID)(ALG_ECB_VALUE)
+#define     ALG_SPHINCS_SHAKE_256F_VALUE		0x0045
+#define TPM_ALG_SPHINCS_SHAKE_256F		        (TPM_ALG_ID)(ALG_SPHINCS_SHAKE_256F_VALUE)
+
 // Values derived from Table 1:2
 #define     ALG_FIRST_VALUE             0x0001
 #define TPM_ALG_FIRST                   (TPM_ALG_ID)(ALG_FIRST_VALUE)
-#define     ALG_LAST_VALUE              0x0044
+#define     ALG_LAST_VALUE              0x0045
 #define TPM_ALG_LAST                    (TPM_ALG_ID)(ALG_LAST_VALUE)
 
 // Table 1:4 - Definition of TPM_ECC_CURVE Constants
