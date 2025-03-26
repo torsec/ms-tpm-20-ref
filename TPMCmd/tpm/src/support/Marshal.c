@@ -5138,7 +5138,7 @@ TPMU_PUBLIC_PARMS_Marshal(TPMU_PUBLIC_PARMS *source, BYTE **buffer, INT32 *size,
 #if ALG_LIBOQS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPMS_RSA_PARMS_Marshal((TPMS_RSA_PARMS *)&(source->rsaDetail), buffer, size);
-#endif ALG_LIBOQS
+#endif //ALG_LIBOQS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPMS_ECC_PARMS_Marshal((TPMS_ECC_PARMS *)&(source->eccDetail), buffer, size);
@@ -5302,7 +5302,7 @@ TPMU_SENSITIVE_COMPOSITE_Unmarshal(TPMU_SENSITIVE_COMPOSITE *target, BYTE **buff
 #if ALG_LIBOQS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPM2B_PRIVATE_KEY_SPHINCS_Unmarshal((TPM2B_PRIVATE_KEY_SPHINCS *)&(target->sphincs), buffer, size);
-#endif ALG_LIBOQS
+#endif //ALG_LIBOQS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPM2B_ECC_PARAMETER_Unmarshal((TPM2B_ECC_PARAMETER *)&(target->ecc), buffer, size);
@@ -5329,7 +5329,7 @@ TPMU_SENSITIVE_COMPOSITE_Marshal(TPMU_SENSITIVE_COMPOSITE *source, BYTE **buffer
 #if ALG_LIBOQS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPM2B_PRIVATE_KEY_SPHINCS_Marshal((TPM2B_PRIVATE_KEY_SPHINCS *)&(source->sphincs), buffer, size);
-#endif ALG_LIBOQS
+#endif //ALG_LIBOQS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPM2B_ECC_PARAMETER_Marshal((TPM2B_ECC_PARAMETER *)&(source->ecc), buffer, size);
