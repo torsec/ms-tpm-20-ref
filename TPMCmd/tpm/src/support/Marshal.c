@@ -5110,8 +5110,8 @@ TPMU_PUBLIC_PARMS_Unmarshal(TPMU_PUBLIC_PARMS *target, BYTE **buffer, INT32 *siz
 #endif // ALG_RSA
 #if ALG_LIBOQS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
-	    return TPM2B_PRIVATE_KEY_SPHINCS_Unmarshal((TPM2B_PRIVATE_KEY_SPHINCS *)&(target->sphincs), buffer, size);
-#endif ALG_LIBOQS
+	    return TPMS_RSA_PARMS_Unmarshal((TPMS_RSA_PARMS *)&(target->rsaDetail), buffer, size);
+#endif //ALG_LIBOQS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPMS_ECC_PARMS_Unmarshal((TPMS_ECC_PARMS *)&(target->eccDetail), buffer, size);
