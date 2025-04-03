@@ -429,6 +429,9 @@ CryptInit(
 #if ALG_ECC
     ok = ok && CryptEccInit();
 #endif // ALG_ECC
+#if ALG_LIBOQS
+    ok = ok && CryptLiboqsInit();
+#endif // ALG_ALG_LIBOQS
     return ok;
 }
 

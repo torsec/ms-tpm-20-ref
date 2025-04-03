@@ -9,6 +9,24 @@
 #define OQS_SIG_sphincs_shake_256f_simple_length_secret_key 128
 #define OQS_SIG_sphincs_shake_256f_simple_length_signature 49856
 
+BYTE *sig_buffer;
+
+//*** CryptLiboqsInit()
+// This function is called at _TPM_Init
+BOOL
+CryptLiboqsInit(
+    void
+    )
+{
+    // Initialize the OQS library
+    sig_buffer = malloc(OQS_SIG_sphincs_shake_256f_simple_length_signature);
+    if (sig_buffer == NULL) {
+	printf("FATAL: Failed to allocate memory for SPHINCS signature buffer\n");
+	return FALSE;
+    }
+    return TRUE;
+}
+
 TPM_RC CryptSphincsGenerateKeyPair(
 	TPMT_PUBLIC *publicArea,
 	TPMT_SENSITIVE *sensitive,
@@ -62,33 +80,23 @@ TPM_RC CryptSphincsSign(TPMT_SIGNATURE* sigOut,
 			TPM_RC retVal = TPM_RC_SUCCESS;
 			UINT16 modSize;
 
-			// Inseriamo un check
+			/* Assert parameters */
 			pAssert(sigOut != NULL && key != NULL && digest != NULL);
 
-			/* Allochiamo dinamicamente il buffer della firma */
-			printf("Before malloc\n");
-			sigOut->signature.sphincs.sig.t.buffer = malloc(OQS_SIG_sphincs_shake_256f_simple_length_signature);
-			printf("After malloc\n");
+			sigOut->signature.sphincs.sig.t.buffer = sig_buffer;
 
 			modSize = key->publicArea.unique.sphincs.t.size;
 
-			if(retVal == TPM_RC_SUCCESS){
-
-				if(crypto_sign_signature(
-					sigOut->signature.sphincs.sig.t.buffer /* Il contenitore della signature*/,
-					&sigOut->signature.sphincs.sig.t.size /*La dimensione della signature*/,
-					digest->b.buffer /*Il messaggio da firmare*/,
-					digest->b.size /*La dimensione della messaggio*/,
-					key->sensitive.sensitive.sphincs.t.buffer /* secret key*/) != OQS_SUCCESS)
-						return TPM_RC_FAILURE;
-				printf("Signature correctly generated\n");
-				for(size_t i=0; i < OQS_SIG_sphincs_shake_256f_simple_length_signature; i++){
-					printf("%02X", sigOut->signature.sphincs.sig.t.buffer[i]);
-				}
-				printf("\n");
-				free(sigOut->signature.sphincs.sig.t.buffer);
-			}
+			if(crypto_sign_signature(
+					sigOut->signature.sphincs.sig.t.buffer /* signature buffer */,
+					&sigOut->signature.sphincs.sig.t.size /* signature size */,
+					digest->b.buffer /* digest to sign */,
+					digest->b.size /* digest size */,
+					key->sensitive.sensitive.sphincs.t.buffer /* secret key */) != OQS_SUCCESS)
+						retVal = TPM_RC_FAILURE;
+			else
+						printf("SPHINCS signature correctly generated\n");
 
 
-			return TPM_RC_FAILURE;
+			return retVal;
 			}

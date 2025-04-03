@@ -2071,7 +2071,7 @@ typedef union {                                     // Table 2:189
     TPMT_HA                         hmac;
 #endif // ALG_HMAC
 #if ALG_LIBOQS
-    TPMS_SIGNATURE_SPHINCS	    sphincs;
+    TPMS_SIGNATURE_SPHINCS  	    sphincs;
 #endif // ALG_LIBOQS
     TPMS_SCHEME_HASH                any;
 } TPMU_SIGNATURE;                                   /* Structure */
