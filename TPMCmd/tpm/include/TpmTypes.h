@@ -1947,6 +1947,7 @@ typedef union {                                     // Table 2:175
     TPM2B        b;
 } TPM2B_PUBLIC_KEY_RSA;                             /* Structure */
 
+#ifdef ALG_SPHINCS
 typedef union {
     struct {
         UINT16		   size;
@@ -1962,6 +1963,25 @@ typedef union {
     } 		 t;
     TPM2B    	 b;
 } TPM2B_SIGNATURE_SPHINCS;
+#endif // ALG_SPHINCS
+
+#ifdef ALG_MLDSA
+typedef union {
+    struct {
+        UINT16		   size;
+        BYTE		   buffer[ALG_ML_DSA_87_PUBLIC_KEY_BYTES];
+    } 		 t;
+    TPM2B    	 b;
+} TPM2B_PUBLIC_KEY_ML_DSA_87;
+
+typedef union {
+    struct {
+        UINT16		   size;
+        BYTE		   buffer[ALG_ML_DSA_87_SIGNATURE_KEY_BYTES];
+    } 		 t;
+    TPM2B    	 b;
+} TPM2B_SIGNATURE_ML_DSA_87;
+#endif // ALG_MLDSA
 
 typedef TPM_KEY_BITS        TPMI_RSA_KEY_BITS;      // Table 2:176  /* Interface */
 
@@ -1973,6 +1993,7 @@ typedef union {                                     // Table 2:177
     TPM2B        b;
 } TPM2B_PRIVATE_KEY_RSA;                            /* Structure */
 
+#ifdef ALG_SPHINCS
 typedef union {
     struct {
         UINT16		   size;
@@ -1980,6 +2001,17 @@ typedef union {
     } 		 t;
     TPM2B    	 b;
 } TPM2B_PRIVATE_KEY_SPHINCS;
+#endif // ALG_SPHINCS
+
+#ifdef ALG_MLDSA
+typedef union {
+    struct {
+        UINT16		   size;
+        BYTE		   buffer[ALG_ML_DSA_87_PRIVATE_KEY_BYTES];
+    } 		 t;
+    TPM2B    	 b;
+} TPM2B_PRIVATE_KEY_ML_DSA_87;
+#endif // ALG_MLDSA
 
 typedef union {                                     // Table 2:178
     struct {
@@ -2027,10 +2059,19 @@ typedef struct {                                    // Table 2:185
     TPM2B_PUBLIC_KEY_RSA        sig;
 } TPMS_SIGNATURE_RSA;                               /* Structure */
 
+#ifdef ALG_SPHINCS
 typedef struct {
 	TPMI_ALG_HASH 	hash;
 	TPM2B_SIGNATURE_SPHINCS	sig;
 } TPMS_SIGNATURE_SPHINCS;
+#endif // ALG_SPHINCS
+
+#ifdef ALG_MLDSA
+typedef struct {
+	TPMI_ALG_HASH 	hash;
+	TPM2B_SIGNATURE_ML_DSA_87	sig;
+} TPMS_SIGNATURE_ML_DSA_87;
+#endif // ALG_MLDSA
 
 // Table 2:186 - Definition of Types for Signature
 typedef TPMS_SIGNATURE_RSA  TPMS_SIGNATURE_RSASSA;
@@ -2070,9 +2111,12 @@ typedef union {                                     // Table 2:189
 #if ALG_HMAC
     TPMT_HA                         hmac;
 #endif // ALG_HMAC
-#if ALG_LIBOQS
+#if ALG_SPHINCS
     TPMS_SIGNATURE_SPHINCS  	    sphincs;
-#endif // ALG_LIBOQS
+#endif // ALG_SPHINCS
+#if ALG_MLDSA
+    TPMS_SIGNATURE_ML_DSA_87  	    mldsa;
+#endif // ALG_MLDSA
     TPMS_SCHEME_HASH                any;
 } TPMU_SIGNATURE;                                   /* Structure */
 
@@ -2119,8 +2163,11 @@ typedef union {                                     // Table 2:194
 #if ALG_ECC
     TPMS_ECC_POINT              ecc;
 #endif // ALG_ECC
-#if ALG_LIBOQS
+#if ALG_SPHINCS
     TPM2B_PUBLIC_KEY_SPHINCS	sphincs;
+#endif
+#if ALG_MLDSA
+    TPM2B_PUBLIC_KEY_ML_DSA_87	mldsa;
 #endif
     TPMS_DERIVE                 derive;
 } TPMU_PUBLIC_ID;                                   /* Structure */
@@ -2213,9 +2260,12 @@ typedef union {                                     // Table 2:205
     TPM2B_SYM_KEY                       sym;
 #endif // ALG_SYMCIPHER
     TPM2B_PRIVATE_VENDOR_SPECIFIC       any;
-#if ALG_LIBOQS
+#if ALG_SPHINCS
     TPM2B_PRIVATE_KEY_SPHINCS		sphincs;
-#endif // ALG_LIBOQS
+#endif // ALG_SPHINCS
+#if ALG_MLDSA
+    TPM2B_PRIVATE_KEY_ML_DSA_87		    mldsa;
+#endif // ALG_MLDSA
 } TPMU_SENSITIVE_COMPOSITE;                         /* Structure */
 
 typedef struct {                                    // Table 2:206

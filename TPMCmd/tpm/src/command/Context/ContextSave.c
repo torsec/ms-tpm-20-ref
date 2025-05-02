@@ -34,6 +34,7 @@
  */
 #include "Tpm.h"
 #include "ContextSave_fp.h"
+#include <stdio.h>
 
 #if CC_ContextSave  // Conditional expansion of this file
 
@@ -119,6 +120,8 @@ TPM2_ContextSave(
                 CryptRsaLoadPrivateExponent(&object->publicArea, &object->sensitive);
 #endif
             // Make sure things fit
+            printf("out->context.contextBlob.t.size = %d\n", out->context.contextBlob.t.size);
+            printf("sizeof(out->context.contextBlob.t.buffer) = %d\n", sizeof(out->context.contextBlob.t.buffer));
             pAssert(out->context.contextBlob.t.size
                     <= sizeof(out->context.contextBlob.t.buffer));
             // Copy the whole internal OBJECT structure to context blob

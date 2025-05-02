@@ -40,6 +40,7 @@
 #include "Tpm.h"
 #if !TABLE_DRIVEN_MARSHAL
 #include "Marshal_fp.h"
+#include <stdio.h>
 
 // Table 2:3 - Definition of Base Types
 //   UINT8 definition from table 2:3
@@ -4939,9 +4940,9 @@ TPMI_ALG_PUBLIC_Unmarshal(TPMI_ALG_PUBLIC *target, BYTE **buffer, INT32 *size)
 #if ALG_RSA
             case TPM_ALG_RSA:
 #endif // ALG_RSA
-#if ALG_LIBOQS
+#if ALG_SPHINCS
 	    case TPM_ALG_SPHINCS_SHAKE_256F:
-#endif //ALG_LIBOQS
+#endif //ALG_SPHINCS
 #if ALG_ECC
             case TPM_ALG_ECC:
 #endif // ALG_ECC
@@ -4984,10 +4985,10 @@ TPMU_PUBLIC_ID_Unmarshal(TPMU_PUBLIC_ID *target, BYTE **buffer, INT32 *size, UIN
         case TPM_ALG_RSA:
             return TPM2B_PUBLIC_KEY_RSA_Unmarshal((TPM2B_PUBLIC_KEY_RSA *)&(target->rsa), buffer, size);
 #endif // ALG_RSA
-#if ALG_LIBOQS
+#if ALG_SPHINCS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPM2B_PUBLIC_KEY_SPHINCS_Unmarshal((TPM2B_PUBLIC_KEY_SPHINCS *)&(target->sphincs), buffer, size);
-#endif //ALG_LIBOQS
+#endif //ALG_SPHINCS
 
 #if ALG_ECC
         case TPM_ALG_ECC:
@@ -5012,10 +5013,10 @@ TPMU_PUBLIC_ID_Marshal(TPMU_PUBLIC_ID *source, BYTE **buffer, INT32 *size, UINT3
         case TPM_ALG_RSA:
             return TPM2B_PUBLIC_KEY_RSA_Marshal((TPM2B_PUBLIC_KEY_RSA *)&(source->rsa), buffer, size);
 #endif // ALG_RSA
-#if ALG_LIBOQS
+#if ALG_SPHINCS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPM2B_PUBLIC_KEY_SPHINCS_Marshal((TPM2B_PUBLIC_KEY_SPHINCS *)&(source->sphincs), buffer, size);
-#endif //ALG_LIBOQS
+#endif //ALG_SPHINCS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPMS_ECC_POINT_Marshal((TPMS_ECC_POINT *)&(source->ecc), buffer, size);
@@ -5108,10 +5109,10 @@ TPMU_PUBLIC_PARMS_Unmarshal(TPMU_PUBLIC_PARMS *target, BYTE **buffer, INT32 *siz
         case TPM_ALG_RSA:
             return TPMS_RSA_PARMS_Unmarshal((TPMS_RSA_PARMS *)&(target->rsaDetail), buffer, size);
 #endif // ALG_RSA
-#if ALG_LIBOQS
+#if ALG_SPHINCS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPMS_RSA_PARMS_Unmarshal((TPMS_RSA_PARMS *)&(target->rsaDetail), buffer, size);
-#endif //ALG_LIBOQS
+#endif //ALG_SPHINCS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPMS_ECC_PARMS_Unmarshal((TPMS_ECC_PARMS *)&(target->eccDetail), buffer, size);
@@ -5135,10 +5136,10 @@ TPMU_PUBLIC_PARMS_Marshal(TPMU_PUBLIC_PARMS *source, BYTE **buffer, INT32 *size,
         case TPM_ALG_RSA:
             return TPMS_RSA_PARMS_Marshal((TPMS_RSA_PARMS *)&(source->rsaDetail), buffer, size);
 #endif // ALG_RSA
-#if ALG_LIBOQS
+#if ALG_SPHINCS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPMS_RSA_PARMS_Marshal((TPMS_RSA_PARMS *)&(source->rsaDetail), buffer, size);
-#endif //ALG_LIBOQS
+#endif //ALG_SPHINCS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPMS_ECC_PARMS_Marshal((TPMS_ECC_PARMS *)&(source->eccDetail), buffer, size);
@@ -5299,10 +5300,10 @@ TPMU_SENSITIVE_COMPOSITE_Unmarshal(TPMU_SENSITIVE_COMPOSITE *target, BYTE **buff
         case TPM_ALG_RSA:
             return TPM2B_PRIVATE_KEY_RSA_Unmarshal((TPM2B_PRIVATE_KEY_RSA *)&(target->rsa), buffer, size);
 #endif // ALG_RSA
-#if ALG_LIBOQS
+#if ALG_SPHINCS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPM2B_PRIVATE_KEY_SPHINCS_Unmarshal((TPM2B_PRIVATE_KEY_SPHINCS *)&(target->sphincs), buffer, size);
-#endif //ALG_LIBOQS
+#endif //ALG_SPHINCS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPM2B_ECC_PARAMETER_Unmarshal((TPM2B_ECC_PARAMETER *)&(target->ecc), buffer, size);
@@ -5326,10 +5327,10 @@ TPMU_SENSITIVE_COMPOSITE_Marshal(TPMU_SENSITIVE_COMPOSITE *source, BYTE **buffer
         case TPM_ALG_RSA:
             return TPM2B_PRIVATE_KEY_RSA_Marshal((TPM2B_PRIVATE_KEY_RSA *)&(source->rsa), buffer, size);
 #endif // ALG_RSA
-#if ALG_LIBOQS
+#if ALG_SPHINCS
 	case TPM_ALG_SPHINCS_SHAKE_256F:
 	    return TPM2B_PRIVATE_KEY_SPHINCS_Marshal((TPM2B_PRIVATE_KEY_SPHINCS *)&(source->sphincs), buffer, size);
-#endif //ALG_LIBOQS
+#endif //ALG_SPHINCS
 #if ALG_ECC
         case TPM_ALG_ECC:
             return TPM2B_ECC_PARAMETER_Marshal((TPM2B_ECC_PARAMETER *)&(source->ecc), buffer, size);
@@ -5789,6 +5790,9 @@ BYTE_Array_Marshal(BYTE *source, BYTE **buffer, INT32 *size, INT32 count)
     {
         if ((size == 0) || ((*size -= count) >= 0))
         {
+            printf("dest addr: %p\n", *buffer);
+            printf("src addr: %p\n", source);
+            printf("size: %d\n", count);
             memcpy(*buffer, source, count);
             *buffer += count;
         }

@@ -40,7 +40,8 @@
 
 //** Includes
 #include "Tpm.h"
-#include "CryptLiboqs.h"
+#include "CryptSphincs.h"
+#include "CryptMLDsa.h"
 
 //****************************************************************************/
 //**     Hash/HMAC Functions
@@ -429,9 +430,9 @@ CryptInit(
 #if ALG_ECC
     ok = ok && CryptEccInit();
 #endif // ALG_ECC
-#if ALG_LIBOQS
-    ok = ok && CryptLiboqsInit();
-#endif // ALG_ALG_LIBOQS
+#if ALG_SPHINCS
+    ok = ok && CryptSphincsInit();
+#endif // ALG_ALG_SHPICS
     return ok;
 }
 
