@@ -1504,6 +1504,29 @@ TPMS_SIG_SCHEME_RSAPSS_Marshal(TPMS_SIG_SCHEME_RSAPSS *source,
 #endif // !USE_MARSHALING_DEFINES
 #endif // ALG_RSA
 
+#if ALG_MLDSA
+#if !USE_MARSHALING_DEFINES
+TPM_RC
+TPMS_SIG_SCHEME_MLDSA_Unmarshal(TPMS_SIG_SCHEME_MLDSA *target,
+            BYTE **buffer, INT32 *size);
+#else
+#define TPMS_SIG_SCHEME_MLDSA_Unmarshal(target, buffer, size)                     \
+            TPMS_SCHEME_HASH_Unmarshal((TPMS_SCHEME_HASH *)(target),               \
+            (buffer),                                                              \
+            (size))
+#endif // !USE_MARSHALING_DEFINES
+#if !USE_MARSHALING_DEFINES
+UINT16
+TPMS_SIG_SCHEME_MLDSA_Marshal(TPMS_SIG_SCHEME_MLDSA *source,
+            BYTE **buffer, INT32 *size);
+#else
+#define TPMS_SIG_SCHEME_MLDSA_Marshal(source, buffer, size)                       \
+            TPMS_SCHEME_HASH_Marshal((TPMS_SCHEME_HASH *)(source),                 \
+            (buffer),                                                              \
+            (size))
+#endif // !USE_MARSHALING_DEFINES
+#endif // ALG_MLDSA
+
 // Table 2:160 - Definition of Types for ECC Signature Schemes
 #if ALG_ECC
 #if !USE_MARSHALING_DEFINES
@@ -1821,6 +1844,28 @@ TPMI_ALG_RSA_SCHEME_Marshal(TPMI_ALG_RSA_SCHEME *source,
 #endif // !USE_MARSHALING_DEFINES
 #endif // ALG_RSA
 
+#if ALG_MLDSA
+TPM_RC
+TPMI_ALG_MLDSA_SCHEME_Unmarshal(TPMI_ALG_MLDSA_SCHEME *target,
+            BYTE **buffer, INT32 *size, BOOL flag);
+#if !USE_MARSHALING_DEFINES
+UINT16
+TPMI_ALG_MLDSA_SCHEME_Marshal(TPMI_ALG_MLDSA_SCHEME *source,
+            BYTE **buffer, INT32 *size);
+#else
+#define TPMI_ALG_MLDSA_SCHEME_Marshal(source, buffer, size)                          \
+            TPM_ALG_ID_Marshal((TPM_ALG_ID *)(source), (buffer), (size))
+#endif // !USE_MARSHALING_DEFINES
+#endif // ALG_MLDSA
+
+#if ALG_MLDSA
+TPM_RC
+TPMT_MLDSA_SCHEME_Unmarshal(TPMT_MLDSA_SCHEME *target,
+            BYTE **buffer, INT32 *size, BOOL flag);
+UINT16
+TPMT_MLDSA_SCHEME_Marshal(TPMT_MLDSA_SCHEME *source, BYTE **buffer, INT32 *size);
+#endif // ALG_MLDSA
+
 // Table 2:172 - Definition of TPMT_RSA_SCHEME Structure
 #if ALG_RSA
 TPM_RC
@@ -1829,6 +1874,14 @@ TPMT_RSA_SCHEME_Unmarshal(TPMT_RSA_SCHEME *target,
 UINT16
 TPMT_RSA_SCHEME_Marshal(TPMT_RSA_SCHEME *source, BYTE **buffer, INT32 *size);
 #endif // ALG_RSA
+
+#if ALG_MLDSA
+TPM_RC
+TPMT_MLDSA_SCHEME_Unmarshal(TPMT_MLDSA_SCHEME *target,
+            BYTE **buffer, INT32 *size, BOOL flag);
+UINT16
+TPMT_MLDSA_SCHEME_Marshal(TPMT_MLDSA_SCHEME *source, BYTE **buffer, INT32 *size);
+#endif // ALG_MLDSA
 
 // Table 2:173 - Definition of TPMI_ALG_RSA_DECRYPT Type
 #if ALG_RSA
@@ -1864,6 +1917,15 @@ TPM2B_PUBLIC_KEY_RSA_Marshal(TPM2B_PUBLIC_KEY_RSA *source,
             BYTE **buffer, INT32 *size);
 #endif // ALG_RSA
 
+#if ALG_MLDSA
+TPM_RC
+TPM2B_PUBLIC_KEY_MLDSA_87_Unmarshal(TPM2B_PUBLIC_KEY_MLDSA_87 *target,
+            BYTE **buffer, INT32 *size);
+UINT16
+TPM2B_PUBLIC_KEY_MLDSA_87_Marshal(TPM2B_PUBLIC_KEY_MLDSA_87 *source,
+            BYTE **buffer, INT32 *size);
+#endif // ALG_MLDSA
+
 // Table 2:176 - Definition of TPMI_RSA_KEY_BITS Type
 #if ALG_RSA
 TPM_RC
@@ -1886,6 +1948,15 @@ UINT16
 TPM2B_PRIVATE_KEY_RSA_Marshal(TPM2B_PRIVATE_KEY_RSA *source,
             BYTE **buffer, INT32 *size);
 #endif // ALG_RSA
+
+#if ALG_MLDSA
+TPM_RC
+TPM2B_PRIVATE_KEY_MLDSA_87_Unmarshal(TPM2B_PRIVATE_KEY_MLDSA_87 *target,
+            BYTE **buffer, INT32 *size);
+UINT16
+TPM2B_PRIVATE_KEY_MLDSA_87_Marshal(TPM2B_PRIVATE_KEY_MLDSA_87 *source,
+            BYTE **buffer, INT32 *size);
+#endif // ALG_MLDSA
 
 // Table 2:178 - Definition of TPM2B_ECC_PARAMETER Structure
 TPM_RC
@@ -1963,6 +2034,23 @@ TPMS_SIGNATURE_RSA_Unmarshal(TPMS_SIGNATURE_RSA *target,
 UINT16
 TPMS_SIGNATURE_RSA_Marshal(TPMS_SIGNATURE_RSA *source, BYTE **buffer, INT32 *size);
 #endif // ALG_RSA
+
+#if ALG_MLDSA
+TPM_RC
+TPM2B_SIGNATURE_MLDSA_87_Unmarshal(TPM2B_SIGNATURE_MLDSA_87 *target, BYTE **buffer,
+                                   INT32 *size);
+UINT16
+TPM2B_SIGNATURE_MLDSA_87_Marshal(TPM2B_SIGNATURE_MLDSA_87 *source, BYTE **buffer,
+                                 INT32 *size);
+#endif // ALG_MLDSA
+
+#if ALG_MLDSA
+TPM_RC
+TPMS_SIGNATURE_MLDSA_87_Unmarshal(TPMS_SIGNATURE_MLDSA_87 *target,
+            BYTE **buffer, INT32 *size);
+UINT16
+TPMS_SIGNATURE_MLDSA_87_Marshal(TPMS_SIGNATURE_MLDSA_87 *source, BYTE **buffer, INT32 *size);
+#endif // ALG_MLDSA
 
 // Table 2:186 - Definition of Types for Signature
 #if ALG_RSA
@@ -2166,6 +2254,13 @@ TPMS_RSA_PARMS_Unmarshal(TPMS_RSA_PARMS *target, BYTE **buffer, INT32 *size);
 UINT16
 TPMS_RSA_PARMS_Marshal(TPMS_RSA_PARMS *source, BYTE **buffer, INT32 *size);
 #endif // ALG_RSA
+
+#if ALG_MLDSA
+TPM_RC
+TPMS_MLDSA_PARMS_Unmarshal(TPMS_MLDSA_PARMS *target, BYTE **buffer, INT32 *size);
+UINT16
+TPMS_MLDSA_PARMS_Marshal(TPMS_MLDSA_PARMS *source, BYTE **buffer, INT32 *size);
+#endif // ALG_MLDSA
 
 // Table 2:198 - Definition of TPMS_ECC_PARMS Structure
 #if ALG_ECC
