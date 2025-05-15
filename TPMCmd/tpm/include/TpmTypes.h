@@ -127,11 +127,13 @@ typedef UINT16                          TPM_ALG_ID;
 #define TPM_ALG_ECB                     (TPM_ALG_ID)(ALG_ECB_VALUE)
 #define     ALG_SPHINCS_SHAKE_256F_VALUE		0x0045
 #define TPM_ALG_SPHINCS_SHAKE_256F		        (TPM_ALG_ID)(ALG_SPHINCS_SHAKE_256F_VALUE)
+#define     ALG_MLDSA_87_VALUE		    0x0046
+#define TPM_ALG_MLDSA_87		        (TPM_ALG_ID)(ALG_MLDSA_87_VALUE)
 
 // Values derived from Table 1:2
 #define     ALG_FIRST_VALUE             0x0001
 #define TPM_ALG_FIRST                   (TPM_ALG_ID)(ALG_FIRST_VALUE)
-#define     ALG_LAST_VALUE              0x0045
+#define     ALG_LAST_VALUE              0x0046
 #define TPM_ALG_LAST                    (TPM_ALG_ID)(ALG_LAST_VALUE)
 
 // Table 1:4 - Definition of TPM_ECC_CURVE Constants
@@ -1819,6 +1821,8 @@ typedef TPMS_SCHEME_HASH    TPMS_SIG_SCHEME_SM2;
 typedef TPMS_SCHEME_HASH    TPMS_SIG_SCHEME_ECSCHNORR;
 typedef TPMS_SCHEME_ECDAA   TPMS_SIG_SCHEME_ECDAA;
 
+typedef TPMS_SCHEME_HASH    TPMS_SIG_SCHEME_MLDSA;
+
 typedef union {                                     // Table 2:161
 #if ALG_ECC
     TPMS_SIG_SCHEME_ECDAA           ecdaa;
@@ -1917,6 +1921,9 @@ typedef union {                                     // Table 2:169
 #if ALG_OAEP
     TPMS_ENC_SCHEME_OAEP            oaep;
 #endif // ALG_OAEP
+#if ALG_MLDSA
+    TPMS_SIG_SCHEME_MLDSA           mldsa;
+#endif // ALG_MLDSA
     TPMS_SCHEME_HASH                anySig;
 } TPMU_ASYM_SCHEME;                                 /* Structure */
 
@@ -1931,6 +1938,13 @@ typedef struct {                                    // Table 2:172
     TPMI_ALG_RSA_SCHEME         scheme;
     TPMU_ASYM_SCHEME            details;
 } TPMT_RSA_SCHEME;                                  /* Structure */
+
+typedef TPM_ALG_ID TPMI_ALG_MLDSA_SCHEME;
+
+typedef struct {
+    TPMI_ALG_MLDSA_SCHEME scheme;
+    TPMU_ASYM_SCHEME details; 
+} TPMT_MLDSA_SCHEME;                                  /* Structure */
 
 typedef TPM_ALG_ID          TPMI_ALG_RSA_DECRYPT;   // Table 2:173  /* Interface */
 
@@ -1947,7 +1961,7 @@ typedef union {                                     // Table 2:175
     TPM2B        b;
 } TPM2B_PUBLIC_KEY_RSA;                             /* Structure */
 
-#ifdef ALG_SPHINCS
+#if ALG_SPHINCS
 typedef union {
     struct {
         UINT16		   size;
@@ -1965,22 +1979,22 @@ typedef union {
 } TPM2B_SIGNATURE_SPHINCS;
 #endif // ALG_SPHINCS
 
-#ifdef ALG_MLDSA
+#if ALG_MLDSA
 typedef union {
     struct {
         UINT16		   size;
-        BYTE		   buffer[ALG_ML_DSA_87_PUBLIC_KEY_BYTES];
+        BYTE		   buffer[ALG_MLDSA_87_PUBLIC_KEY_BYTES];
     } 		 t;
     TPM2B    	 b;
-} TPM2B_PUBLIC_KEY_ML_DSA_87;
+} TPM2B_PUBLIC_KEY_MLDSA_87;
 
 typedef union {
     struct {
         UINT16		   size;
-        BYTE		   buffer[ALG_ML_DSA_87_SIGNATURE_KEY_BYTES];
+        BYTE		   buffer[ALG_MLDSA_87_SIGNATURE_BYTES];
     } 		 t;
     TPM2B    	 b;
-} TPM2B_SIGNATURE_ML_DSA_87;
+} TPM2B_SIGNATURE_MLDSA_87;
 #endif // ALG_MLDSA
 
 typedef TPM_KEY_BITS        TPMI_RSA_KEY_BITS;      // Table 2:176  /* Interface */
@@ -1993,7 +2007,7 @@ typedef union {                                     // Table 2:177
     TPM2B        b;
 } TPM2B_PRIVATE_KEY_RSA;                            /* Structure */
 
-#ifdef ALG_SPHINCS
+#if ALG_SPHINCS
 typedef union {
     struct {
         UINT16		   size;
@@ -2003,14 +2017,14 @@ typedef union {
 } TPM2B_PRIVATE_KEY_SPHINCS;
 #endif // ALG_SPHINCS
 
-#ifdef ALG_MLDSA
+#if ALG_MLDSA
 typedef union {
     struct {
         UINT16		   size;
-        BYTE		   buffer[ALG_ML_DSA_87_PRIVATE_KEY_BYTES];
+        BYTE		   buffer[ALG_MLDSA_87_PRIVATE_KEY_BYTES];
     } 		 t;
     TPM2B    	 b;
-} TPM2B_PRIVATE_KEY_ML_DSA_87;
+} TPM2B_PRIVATE_KEY_MLDSA_87;
 #endif // ALG_MLDSA
 
 typedef union {                                     // Table 2:178
@@ -2059,18 +2073,18 @@ typedef struct {                                    // Table 2:185
     TPM2B_PUBLIC_KEY_RSA        sig;
 } TPMS_SIGNATURE_RSA;                               /* Structure */
 
-#ifdef ALG_SPHINCS
+#if ALG_SPHINCS
 typedef struct {
 	TPMI_ALG_HASH 	hash;
 	TPM2B_SIGNATURE_SPHINCS	sig;
 } TPMS_SIGNATURE_SPHINCS;
 #endif // ALG_SPHINCS
 
-#ifdef ALG_MLDSA
+#if ALG_MLDSA
 typedef struct {
 	TPMI_ALG_HASH 	hash;
-	TPM2B_SIGNATURE_ML_DSA_87	sig;
-} TPMS_SIGNATURE_ML_DSA_87;
+	TPM2B_SIGNATURE_MLDSA_87	sig;
+} TPMS_SIGNATURE_MLDSA_87;
 #endif // ALG_MLDSA
 
 // Table 2:186 - Definition of Types for Signature
@@ -2115,7 +2129,7 @@ typedef union {                                     // Table 2:189
     TPMS_SIGNATURE_SPHINCS  	    sphincs;
 #endif // ALG_SPHINCS
 #if ALG_MLDSA
-    TPMS_SIGNATURE_ML_DSA_87  	    mldsa;
+    TPMS_SIGNATURE_MLDSA_87  	    mldsa;
 #endif // ALG_MLDSA
     TPMS_SCHEME_HASH                any;
 } TPMU_SIGNATURE;                                   /* Structure */
@@ -2167,7 +2181,7 @@ typedef union {                                     // Table 2:194
     TPM2B_PUBLIC_KEY_SPHINCS	sphincs;
 #endif
 #if ALG_MLDSA
-    TPM2B_PUBLIC_KEY_ML_DSA_87	mldsa;
+    TPM2B_PUBLIC_KEY_MLDSA_87	mldsa;
 #endif
     TPMS_DERIVE                 derive;
 } TPMU_PUBLIC_ID;                                   /* Structure */
@@ -2187,6 +2201,10 @@ typedef struct {                                    // Table 2:197
     TPMI_RSA_KEY_BITS           keyBits;
     UINT32                      exponent;
 } TPMS_RSA_PARMS;                                   /* Structure */
+
+typedef struct {
+    TPMT_MLDSA_SCHEME scheme;
+} TPMS_MLDSA_PARMS;                                  /* Structure */
 
 typedef struct {                                    // Table 2:198
     TPMT_SYM_DEF_OBJECT         symmetric;
@@ -2208,6 +2226,9 @@ typedef union {                                     // Table 2:199
 #if ALG_ECC
     TPMS_ECC_PARMS              eccDetail;
 #endif // ALG_ECC
+#if ALG_MLDSA
+    TPMS_MLDSA_PARMS            mldsaDetail;
+#endif // ALG_MLDSA
     TPMS_ASYM_PARMS             asymDetail;
 } TPMU_PUBLIC_PARMS;                                /* Structure */
 
@@ -2264,7 +2285,7 @@ typedef union {                                     // Table 2:205
     TPM2B_PRIVATE_KEY_SPHINCS		sphincs;
 #endif // ALG_SPHINCS
 #if ALG_MLDSA
-    TPM2B_PRIVATE_KEY_ML_DSA_87		    mldsa;
+    TPM2B_PRIVATE_KEY_MLDSA_87		    mldsa;
 #endif // ALG_MLDSA
 } TPMU_SENSITIVE_COMPOSITE;                         /* Structure */
 

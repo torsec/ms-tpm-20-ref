@@ -164,7 +164,7 @@
 #define NUM_AUTHVALUE_PCR_GROUP         1
 #endif
 #ifndef MAX_CONTEXT_SIZE
-#define MAX_CONTEXT_SIZE                7856 // 1344
+#define MAX_CONTEXT_SIZE                7856 //12288 // 1344
 #endif
 #ifndef MAX_DIGEST_BUFFER
 #define MAX_DIGEST_BUFFER               1024
@@ -310,10 +310,12 @@
 #define ALG_RSA                         ALG_YES
 #endif
 #ifndef ALG_SPHINCS
-//#define ALG_SPHINCS                     ALG_YES
+#define ALG_SPHINCS                     ALG_NO /* Remove SPHINCS support */
+#else
+#define ALG_SPHINCS                     ALG_NO /* Remove SPHINCS support */
 #endif
 #ifndef ALG_MLDSA
-#define ALG_MLDSA                      ALG_YES
+#define ALG_MLDSA                      ALG_YES /* Add ML-DSA support */
 #endif
 #ifndef ALG_RSAES
 #define ALG_RSAES                       (ALG_YES && ALG_RSA)
