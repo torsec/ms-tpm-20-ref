@@ -157,6 +157,12 @@ static const ALGORITHM    s_algorithms[] =
 #if ALG_ECB
     {TPM_ALG_ECB,            TPMA_ALGORITHM_INITIALIZER(0, 1, 0, 0, 0, 0, 1, 0, 0)},
 #endif
+#if ALG_SPHINCS
+    {TPM_ALG_SPHINCS_SHAKE_256F,           TPMA_ALGORITHM_INITIALIZER(1, 0, 0, 1, 0, 1, 0, 0, 0)},
+#endif
+#if ALG_MLDSA
+    {TPM_ALG_MLDSA_87,       TPMA_ALGORITHM_INITIALIZER(1, 0, 0, 0, 0, 1, 0, 0, 0)},
+#endif
 };
 
 //** AlgorithmCapGetImplemented()
