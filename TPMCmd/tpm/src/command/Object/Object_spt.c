@@ -482,6 +482,8 @@ SchemeChecks(
                 }
             }
             break;
+        case TPM_ALG_MLDSA_87:
+            return TPM_RC_SUCCESS;
         default: // handling for asymmetric
             scheme = parms->asymDetail.scheme.scheme;
             symAlgs = &parms->asymDetail.symmetric;
