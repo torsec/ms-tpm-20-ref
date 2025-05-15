@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef ALG_SPHINCS
+#if ALG_SPHINCS
 
 #define OQS_SIG_sphincs_shake_256f_simple_length_public_key 64
 #define OQS_SIG_sphincs_shake_256f_simple_length_secret_key 128
