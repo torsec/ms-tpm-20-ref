@@ -189,7 +189,7 @@ typedef UINT32                              TPM_CC;
 #define NUM_AUTHVALUE_PCR_GROUP         1
 #endif
 #ifndef MAX_CONTEXT_SIZE
-#define MAX_CONTEXT_SIZE                1344
+#define MAX_CONTEXT_SIZE                7856 //12288 // 1344
 #endif
 #ifndef MAX_DIGEST_BUFFER
 #define MAX_DIGEST_BUFFER               1024
@@ -228,10 +228,10 @@ typedef UINT32                              TPM_CC;
 #define NUM_POLICY_PCR                  1
 #endif
 #ifndef MAX_COMMAND_SIZE
-#define MAX_COMMAND_SIZE                4096
+#define MAX_COMMAND_SIZE                8192 // 4096
 #endif
 #ifndef MAX_RESPONSE_SIZE
-#define MAX_RESPONSE_SIZE               4096
+#define MAX_RESPONSE_SIZE               8192 // 4096
 #endif
 #ifndef ORDERLY_BITS
 #define ORDERLY_BITS                    8
@@ -333,6 +333,14 @@ typedef UINT32                              TPM_CC;
 #endif
 #ifndef ALG_RSA
 #define ALG_RSA                         ALG_YES
+#endif
+#ifndef ALG_SPHINCS
+#define ALG_SPHINCS                     ALG_NO /* Remove SPHINCS support */
+#else
+#define ALG_SPHINCS                     ALG_NO /* Remove SPHINCS support */
+#endif
+#ifndef ALG_MLDSA
+#define ALG_MLDSA                      ALG_YES /* Add ML-DSA support */
 #endif
 #ifndef ALG_RSAES
 #define ALG_RSAES                       (ALG_YES && ALG_RSA)

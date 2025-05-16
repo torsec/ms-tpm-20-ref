@@ -49,8 +49,8 @@
 //
 // These must match values from reference/TPM/include/TpmProfile.h
 //
-#define  MAX_COMMAND_SIZE       4096
-#define  MAX_RESPONSE_SIZE      4096
+#define  MAX_COMMAND_SIZE       8192 // 4096
+#define  MAX_RESPONSE_SIZE      8192 // 4096
 
 //
 // Macro for intentionally unreferenced parameters
