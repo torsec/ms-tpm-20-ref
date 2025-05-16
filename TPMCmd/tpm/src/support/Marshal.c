@@ -4138,7 +4138,6 @@ TPMI_ALG_MLDSA_SCHEME_Unmarshal(TPMI_ALG_MLDSA_SCHEME *target, BYTE **buffer, IN
 {
     TPM_RC    result;
     result = TPM_ALG_ID_Unmarshal((TPM_ALG_ID *)target, buffer, size);
-    printf("TPMI_ALG_MLDSA_SCHEME_Unmarshal(): %04x\n", *target);
     if(result == TPM_RC_SUCCESS)
     {
         switch (*target)
