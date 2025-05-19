@@ -34,7 +34,7 @@
  * Level 00 Revision 00.13
  * March 30, 2016
  */
-#define HEADER_DIGEST_SIZE      20
+#define HEADER_DIGEST_SIZE      48
 
 /*
  * Section 4.40 of Trusted Platform Module Library. Part 1.
@@ -185,7 +185,7 @@ typedef struct {
 	uint32_t	event_type;
 
 	/* SHALL be 20 Bytes of 0x00 */
-	uint8_t		digest[SHA1_DIGEST_SIZE];
+	uint8_t		digest[SHA384_DIGEST_SIZE];
 
 	/* The size of the event */
 	uint32_t	event_size;
