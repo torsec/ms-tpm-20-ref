@@ -69,6 +69,7 @@ srcs-y += reference/RuntimeSupport.c
 srcs-y += platform/fTPM_helpers.c
 
 srcs-y += fTPM.c
+srcs-y += getauxval_stub.c
 
 ifeq ($(CFG_TA_MEASURED_BOOT),y)
 # Support for Trusted Firmware Measured Boot.
